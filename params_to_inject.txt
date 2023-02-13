@@ -1,0 +1,3 @@
+docker.enabled = true
+params.outdir = "out"
+params.publish_dir_mode = "copy"

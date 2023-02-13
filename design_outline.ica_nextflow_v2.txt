@@ -1,0 +1,28 @@
+# Different ICA nextflow pipeline characteristics
+
+## option 1: nextflow pipeline is not DSL2 compatible and does not have reference to modules
+    - read config files (nextflow.config -> all other configs)
+    - strip out ICA hard-coded params from nextflow.config ( nextflow.config -> ica_nextflow.config)
+    - ensure profile docker-enabled is true in ica_nextflow.config
+    - copy in template.modules.config file to pipeline dir
+    - Add in reference to nextflow.config file includeConfig 'conf/modules.config'
+    - Add in configuration files (ica_nextflow.config-> nextflow config ; other configs to other files) to the create pipeline commands
+** Users will need to smoke test their pipeline code as syntax errors may have been introduced due to the parameter injection **
+
+## option 2: nextflow pipeline is DSL2 compatible. nextflow.config eventually points to a modules.config file
+    - initially proceed as normal
+    - read config files (nextflow.config -> all other configs)
+    - strip out ICA hard-coded params from nextflow.config ( nextflow.config -> ica_nextflow.config)
+    - inject params into modules config file
+        - General settings - memory, cpu, maxForks, pod annotation, publishDir?
+        - Specific modules - select pod annotation based on cpu/memory configuration, maxForks
+    - Add in configuration files (ica_nextflow.config-> nextflow config ; other configs to other files) to the create pipeline commands
+
+
+## option 3: nextflow pipeline is DSL2 compatible. nextflow.config does not point to a modules.config file
+    - read config files (nextflow.config -> all other configs)
+    - strip out ICA hard-coded params from nextflow.config ( nextflow.config -> ica_nextflow.config)
+    - ensure profile docker-enabled is true in ica_nextflow.config
+    - copy in template.modules.config file to pipeline dir
+    - Add in reference to nextflow.config file includeConfig 'conf/modules.config'
+    - Add in configuration files (ica_nextflow.config-> nextflow config ; other configs to other files) to the create pipeline commands

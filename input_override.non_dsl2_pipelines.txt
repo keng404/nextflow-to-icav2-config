@@ -1,0 +1,5 @@
+if(params.input_string != null){
+    def full_input_string = "${workflow.launchDir}/${params.input_string}" 
+    params.input = full_input_string
+    println "Printing to Console " + "input: " + params.input
+}
