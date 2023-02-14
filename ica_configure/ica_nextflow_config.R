@@ -12,8 +12,6 @@ parser <- ArgumentParser()
 # specify our desired options 
 # by default ArgumentParser will add an help option 
 
-parser$add_argument("-s", "--nf-script","--nf_script", default=NULL, required=TRUE,
-                    help="Main NF script")
 parser$add_argument("-c","--config-file","--config_file", default=NULL,required=TRUE,
                     help = "main config file")
 parser$add_argument("-e", "--dsl2-enabled","--dsl2_enabled", action="store_true",default=FALSE,
@@ -28,7 +26,7 @@ parser$add_argument("-g","--generate-parameters-xml","--generate_parameters_xml"
                     action="store_true",default=FALSE, help = "Generate parameters XML file")
 parser$add_argument("-i","--configs-to-ignore","--configs_to_ignore", default=c(""),nargs="?",
                     action="append",help="config files to ignore")
-parser$add_argument("-u","--instance-type-url","--instance_type_url", default="https://help.ica.illumina.com/project/p-flow/f-pipelines#compute-types",
+parser$add_argument("-u","--instance-type-url","--instance_type_url", default="https://help.ica.illumina.com/project/p-flow/f-pipelines#definition",
                     help = "URL that contains ICA instance type table")
 parser$add_argument("-d","--default-instance","--default_instance", default = "himem-small",
                     help = "default instance value")
@@ -46,7 +44,6 @@ parser$add_argument("-n","--ica-instance-namespace","--ica_instance_namespace", 
 # otherwise if options not found on command line then set defaults, 
 args <- parser$parse_args()
 is_simple_config = args$is_simple_config
-nf_script = args$nf_script
 config_file = args$config_file
 config_dat  = read.delim(config_file,quote="",header=F)
 input_override = read.delim(args$input_files_override,header=F,quote="")
@@ -62,10 +59,13 @@ ica_instance_namespace = args$ica_instance_namespace
 default_instance = args$default_instance
 instance_type_table_url = args$instance_type_url
 
-
+rlog::log_debug(paste("URL_OF_INTEREST:",instance_type_table_url,collapse = " "))
+ica_instance_table = get_instance_type_table(url=instance_type_table_url)
+ica_instance_table$CPUs = as.numeric(ica_instance_table$CPUs)
+ica_instance_table$`Mem (GB)` = as.numeric(ica_instance_table$`Mem (GB)`)
 ###############
 
-z = getParamsFromConfig(conf_data=config_dat)
+z = get_params_from_config(conf_file=config_file)
 
 paramsFiller <- function(list_to_fill,params_list){
   params_list_updated = list_to_fill
@@ -171,7 +171,7 @@ if(length(final_config_list) > 0 ){
     key_name = strsplit(basename(final_config_list[config_idx]),"\\.")[[1]][1]
     current_file = final_config_list[config_idx]
     rlog::log_info(paste("Reading in",current_file))
-    parsedParams  = getParamsFromConfig(conf_data=read.delim(current_file,header=F))
+    parsedParams  = get_params_from_config(conf_file=current_file)
     if(length(parsedParams) > 0) {
       paramCollection[[key_name]] = parsedParams
     }

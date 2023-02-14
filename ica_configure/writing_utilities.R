@@ -1,92 +1,99 @@
 options(stringsAsFactors=FALSE)
 library(rlog)
 library(stringr)
-source('reading_utils.R')
-source('writing_utilities.R')
-### ```params_to_strip``` - loads ```params_to_strip.txt``` template and passes list to downstream function
-params_to_strip <- function(template_file){
-  template_data = read.delim(template_file,quote="",header=F)
-  template_data = t(template_data)
-  return(template_data)
-}
-## ```params_to_inject``` - loads ```params_to_inject.txt``` template and passes list to downstream function
-params_to_inject <- function(template_file){
-  template_data = read.delim(template_file,quote="",header=F)
-  template_data = t(template_data)
-  return(template_data)
-}
-## ```copy_modules_template``` - copy in ```template.modules.config``` file to pipeline dir as ```'conf/modules.config'```
-copy_modules_template <- function(template_file=NULL,destination_dir=NULL,output_file=NULL){
+###- ```write_params``` - consumes output of inject_params and writes new ```nextflow.config``` file
+write_params <- function(params_list,additional_lines = NULL,output_file=NULL){
+  new_lines = c()
   if(is.null(output_file)){
-    output_file = "conf/modules.ica.config"
+    output_file = "nextflow.ica.config"
   }
-  output_path = paste(destination_dir,output_file,sep="/",collapse="")
-  copy_command = c("cp",template_file,output_path)
-  rlog::log_info(paste("RUNNING_COMMAND:",paste(copy_command,collapse = " ")))
-  system(paste(copy_command,collapse = " "))
-  
-}
-#########################
-## ```strip_params``` - consumes output of ```params_to_strip``` and ```read_params```, removes params defined in ```params_to_strip.txt```
-strip_params <- function(params_list,params_to_strip){
-  keys_to_keep = names(params_list)[! names(params_list) %in% params_to_strip]
-  keys_removed = names(params_list)[ names(params_list) %in% params_to_strip]
-  if(length(keys_removed) > 0){
-    rlog::log_info(paste("REMOVED_PARAMS:",paste(keys_removed,collapse=" ,"),sep=" "))
+  for(i in 1:length(names(params_list))){
+    new_statement = paste(names(params_list)[i],"=",params_list[[names(params_list)[i]]],collpase=" ")
+    new_lines = c(new_lines,new_statement)
   }
-  params_list1 = list()
-  for( i in 1:length(keys_to_keep)){
-    params_list1[[keys_to_keep[i]]] = params_list[[keys_to_keep[i]]]
-  }
-  return(params_list1)
-}
-### ```inject_params``` - consumes output from ```strip_params``` and add params  defined in ```params_to_inject.txt```
-inject_params <- function(params_list, params_to_inject){
-  params_list1 = params_list
-  params_to_inject_list = list()
-  for(i in 1:length(params_to_inject)){
-    line_split = strsplit(params_to_inject,"\\s+")[[1]]
-    line_split = apply(t(line_split),2,trimws)
-    params_to_inject_list[[line_split[1]]] = line_split[3]
-  }
-  
-  keys_already_present = names(params_list)[names(params_list) %in% names(params_to_inject_list)]
-  keys_not_present = names(params_to_inject_list)[! keys_already_present %in% names(params_to_inject_list)]
-  if(length(keys_already_present) > 0){
-    for(i in 1:length(keys_already_present)){
-      params_list1[[keys_already_present[i]]] = params_list[[keys_already_present[[i]]]]
-    }
-    for(j in 1:length(keys_not_present)){
-      params_list1[[keys_not_present[j]]] = params_to_inject_list[[keys_not_present[[j]]]]
-    }
-  } else{
-    for(j in 1:length(keys_not_present)){
-      params_list1[[keys_not_present[j]]] = params_to_inject_list[[keys_not_present[[j]]]]
+  if(!is.null(additional_lines)){
+    for(i in 1:length(additional_lines)){
+      new_lines = c(new_lines,additional_lines[i])
     }
   }
-  return(params_list1)
+  rlog::log_info(paste("WRITING out params to:",output_file))
+  updated_nextflow_config_file = gsub(".config$",".config.tmp",output_file)
+  write.table(x=new_lines,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)
+  system(paste("cp",updated_nextflow_config_file,output_file))
 }
-##########
-
-###```add_module_reference``` - Add in reference to ```nextflow.config``` file ```includeConfig 'conf/modules.config' ```
-add_module_reference <- function(nextflow_config,additional_config){
-  reference_statement = paste("includeConfig",paste("'",additional_config,"'",collapse="",sep=""),collapse=" ")
-  nextflow_config_data = read.delim(nextflow_config,quote="",header=F)
-  nextflow_config_data = t(nextflow_config_data)
-  nextflow_config_data = c(nextflow_config_data,reference_statement)
-  rlog::log_info(paste("UPDATING",nextflow_config))
-  updated_nextflow_config_file = gsub(".config$",".config.tmp",nextflow_config)
-  write.table(x=nextflow_config_data,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)
-  system(paste("cp",updated_nextflow_config_file,nextflow_config))
+### helper function for write modules file
+create_conditional_statements = function(modules_list,module_name = NULL){
+  conditional_statement_lines = c()
+  statement_prefixes  = c('if','when','def','else if','else')
+  config_keys = names(modules_list)
+  keys_of_interest = c()
+  for(i in 1:length(config_keys)){
+    config_key_split = strsplit(config_keys[i],"\\s+")[[1]]
+    if(sum(config_key_split[1] %in% statement_prefixes) > 0){
+      keys_of_interest = c(keys_of_interest,config_keys[i])
+    }
+  }
+  if( length(keys_of_interest) > 0){
+    for(j in 1:length(keys_of_interest)){
+      conditional_statement_lines = c(conditional_statement_lines,keys_of_interest[j])
+      conditional_statement_lines = c(conditional_statement_lines,paste("\t","process {",collapse=""))
+      if(!is.null(module_name)){
+        conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",module_name,collapse=""))
+      }
+      process_keys = names(modules_list[[keys_of_interest[j]]])
+      for(k in 1:length(process_keys)){
+        sub_process_keys = names(modules_list[[keys_of_interest[j]]][[process_keys[k]]])
+        for(sk in 1:length(sub_process_keys)){
+          if(!is.null(module_name)){
+            conditional_statement_lines = c(conditional_statement_lines,paste("\t\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][[process_keys[k]]][[sub_process_keys[sk]]],collapse=" "))
+          } else{
+            conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][[process_keys[k]]][[sub_process_keys[sk]]],collapse=" "))
+          }
+        }
+      }
+    }
+  }
+  return(conditional_statement_lines)
 }
+create_regular_statements = function(modules_list,module_name = NULL){
+  regular_statement_lines = c()
+  statement_prefixes  = c('if','when','def','else if','else')
+  config_keys = names(modules_list)
+  keys_of_interest = c()
+  for(i in 1:length(config_keys)){
+    config_key_split = strsplit(config_keys[i],"\\s+")[[1]]
+    if(sum(config_key_split[1] %in% statement_prefixes) > 0){
+      keys_of_interest = c(keys_of_interest,config_keys[i])
+    }
+  }
+  if( length(keys_of_interest) > 0){
+    for(j in 1:length(keys_of_interest)){
+      regular_statement_lines = c(regular_statement_lines,keys_of_interest[j])
+      regular_statement_lines = c(regular_statement_lines,paste("\t","process {",collapse=""))
+      if(!is.null(module_name)){
+        regular_statement_lines = c(regular_statement_lines,paste("\t\t",module_name,collapse=""))
+      }
+      sub_process_keys = names(modules_list[[keys_of_interest[j]]][["default"]])
+      for(sk in 1:length(sub_process_keys)){
+        if(!is.null(module_name)){
+         regular_statement_lines = c(regular_statement_lines,paste("\t\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][["default"]][[sub_process_keys[sk]]],collapse=" "))
+        } else{
+          regular_statement_lines = c(regular_statement_lines,paste("\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][["default"]][[sub_process_keys[sk]]],collapse=" "))
+        }
+      }
+    }
+  }
+  return(regular_statement_lines)
+}
+######
 ######## grabbing instance table info from the ICA GitBook
 get_instance_type_table <- function(url){
   library(rvest)
   html = read_html(url,encoding = "ISO-8859-1")
   html_div_nodes = html %>% html_elements("tr")
-  nodes_that_have_table_data = html %>% html_elements("tr") %>% html_attr("data-rnw-int-class")
+  nodes_that_have_table_data = html %>% html_elements("tr") %>% html_attr("data-rnwi-handle")
   
-  nodes_to_check = (1:length(html_div_nodes))[nodes_that_have_table_data == "table-row____"]
+  nodes_to_check = (1:length(html_div_nodes))[nodes_that_have_table_data == "table-row"]
   nodes_to_check = nodes_to_check[!is.na(nodes_to_check)]
   
   computeTypes = FALSE
@@ -128,9 +135,7 @@ get_instance_type_table <- function(url){
   rownames(content_lines) = NULL
   return(as.data.frame(content_lines))
 }
-ica_instance_table = get_instance_type_table(url=instance_type_table_url)
-ica_instance_table$CPUs = as.numeric(ica_instance_table$CPUs)
-ica_instance_table$`Mem (GB)` = as.numeric(ica_instance_table$`Mem (GB)`)
+
 # lookup_table format found in getInstancePodAnnotation function in the nf-core.ica_mod_nf_script.R file
 getInstancePodAnnotation <- function(cpus,mem,container_name,ica_instance_table){
   pod_annotation_prefix = paste("pod annotation:", "'scheduler.illumina.com/presetSize'", ",","value:")
@@ -207,7 +212,7 @@ addMemOrCPUdeclarations <- function(pod_annotation,lookup_table){
 }
 ### - ```override_module_config``` - override module configs for (cpus, memory)
 
-override_module_config <- function(module_list){
+override_module_config <- function(module_list,ica_instance_table){
   module_list1 = module_list
   overrides <- c("cpus","memory")
   double_check <- c("publishDir")
@@ -275,4 +280,48 @@ override_module_config <- function(module_list){
     }
   }
   return(module_list1)
+}
+
+###- ```write_modules``` - consumes output of modules_to_list and write new ```modules.config``` file 
+write_modules <- function(modules_list,output_file=NULL,template_file=NULL){
+  modules_list1 = override_module_config(module_list)
+  if(length(names(module_list1)) > 0 ){
+    module_list = module_list1
+  }
+  new_lines = c()
+  if(is.null(output_file)){
+    output_file = "conf/modules.ica.config"
+  }
+  if(sum("general" %in% names(modules_list))  == 0){
+    template_file_data = read.delim(template_file,quote="",header=F)
+    template_file_data = t(template_file_data)
+    new_lines = c(new_lines,template_file_data)
+  } else{
+    general_config_data = create_conditional_statements(modules_list[["general"]])
+    if(length(general_config_data) > 0){
+      new_lines = c(new_lines,general_config_data)
+    }
+    general_config_data = create_regular_statements(modules_list[["general"]])
+    if(length(general_config_data) > 0){
+      new_lines = c(new_lines,general_config_data)
+    }
+  }
+  keys_of_interest = names(modules_list)
+  keys_of_interest = keys_of_interest[keys_of_interest!="general"]
+  #######
+  for(koi in 1:length(keys_of_interest)){
+    conditional_config_data = create_conditional_statements(modules_list[[keys_of_interest[koi]]],keys_of_interest[koi])
+    if(length(conditional_config_data) > 0 ){
+      new_lines = c(new_lines,conditional_config_data)
+    }
+    config_data = create_regular_statements(modules_list[[keys_of_interest[koi]]],keys_of_interest[koi])
+    if(length(config_data) > 0){
+      new_lines = c(new_lines,config_data)
+    }
+  }
+#########  
+  rlog::log_info(paste("WRITING out modules configuration to:",output_file))
+  updated_nextflow_config_file = gsub(".config$",".config.tmp",output_file)
+  write.table(x=new_lines,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)
+  system(paste("cp",updated_nextflow_config_file,output_file))
 }

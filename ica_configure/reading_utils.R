@@ -2,8 +2,6 @@ options(stringsAsFactors=FALSE)
 suppressPackageStartupMessages(library("argparse"))
 library(rlog)
 library(stringr)
-source('writing_utilities.R')
-source('functional_utilities.R')
 get_params_from_config <- function(conf_file){
   conf_data = read.delim(conf_file,quote="",header=F)
   ## identify lines referring to params defined in config file
@@ -15,7 +13,6 @@ get_params_from_config <- function(conf_file){
   out_params_closure = TRUE
   initial_nested_param = NA
   nested_param_key = NA
-  
   for(i in 1:nrow(conf_data)){
     line_split = strsplit(conf_data[i,],"\\s+")[[1]]
     clean_line = line_split
@@ -133,6 +130,76 @@ get_params_from_config <- function(conf_file){
     }
   }
   return(params)
+}
+
+get_other_lines_from_config <- function(conf_file){
+  conf_data = read.delim(conf_file,quote="",header=F)
+  ## identify lines referring to params defined in config file
+  lines_to_keep = c()
+  in_comment_block = FALSE
+  line_skip = FALSE
+  in_params_closure = FALSE
+  in_closure = FALSE
+  out_closure = TRUE
+  out_params_closure = TRUE
+  initial_nested_param = NA
+  nested_param_key = NA
+  for(i in 1:nrow(conf_data)){
+    line_split = strsplit(conf_data[i,],"\\s+")[[1]]
+    clean_line = line_split
+    for(t in 1:length(line_split)){
+      sanitized_token = trimws(line_split[t])
+      sanitized_token = gsub("'","\"",sanitized_token)
+      clean_line[t] = sanitized_token
+    }
+    clean_line = clean_line[clean_line!=""]
+    line_skip = FALSE
+    rlog::log_info(paste(c("CLEAN_LINE:",clean_line),collapse = " ",sep = " "))
+    if(grepl("/",clean_line[1])){
+      line_skip = TRUE
+    } 
+    #########
+    for(t in 1:length(clean_line)){
+      if(grepl("\\/\\*",clean_line[t])){
+     ## if(grepl("/*",clean_line[t])){
+        ##line_skip = TRUE
+        rlog::log_info(paste("FOUND comment token:",clean_line[t]))
+        in_comment_block = TRUE
+      } 
+      if(grepl("\\*\\/",clean_line[t])){
+      ##if(grepl("*/",clean_line[t])){
+        rlog::log_info(paste("FOUND comment token:",clean_line[t]))
+        in_comment_block = FALSE
+      }
+    } 
+    ###rlog::log_info(paste(line_skip,in_comment_block,in_params_closure,in_closure,out_closure,out_params_closure,initial_nested_param,nested_param_key))
+    ##############
+    if(!line_skip && grepl("\\{",conf_data[i,]) && grepl("params",conf_data[i,]) && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
+      rlog::log_info(paste("ENTERING_PARAMS_ENCLOSURE:",conf_data[i,]))
+      in_params_closure = TRUE
+    } else if(!line_skip && grepl("\\{",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && !grepl("params",conf_data[i,])){
+      in_closure = TRUE
+      out_closure = FALSE
+    } else if(!line_skip && grepl("\\}",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) &&  !grepl("params",conf_data[i,]) && in_closure == TRUE){
+      in_closure = FALSE
+      out_closure = TRUE
+    } else if(!line_skip && in_params_closure && grepl("\\}",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && in_closure ==FALSE ){
+      ### initial check each line to see if we've exited the params closure
+      out_params_closure = TRUE
+      in_params_closure = FALSE
+      rlog::log_info(paste("EXITED_PARAMS_ENCLOSURE:",conf_data[i,]))
+      next
+    } else{
+      rlog::log_info(paste("NOT_CHANGING_STATUS:",conf_data[i,]))
+    }
+    
+    ### grab parameters in params enclosure
+    if(!line_skip & out_params_closure & !in_params_closure & !in_comment_block){
+      ##rlog::log_info(paste(line_skip,in_comment_block,in_params_closure,in_closure,out_closure,out_params_closure,initial_nested_param,nested_param_key))
+      lines_to_keep = c(lines_to_keep,conf_data[i,])
+    }
+  }
+  return(lines_to_keep)
 }
 
 paramsFiller <- function(list_to_fill,params_list){
@@ -477,4 +544,3 @@ loadModuleMetadata <- function(config_files){
   }
   return(modulesMetadata)
 }
-y1 = loadModuleMetadata(c('/Users/keng/codes/ica_nextflow_demos/rnaseq/conf/modules.config'))
