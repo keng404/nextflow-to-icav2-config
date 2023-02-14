@@ -14,7 +14,7 @@ parser$add_argument("-x","--parameters-xml","--parameters_xml",
                     default=NULL, help = " parameters XML file output")
 parser$add_argument("-g","--generate-parameters-xml","--generate_parameters_xml",
                     action="store_true",default=FALSE, help = "Generate parameters XML file")
-parser$add_argument("-e","--error-stub","--error_stub", default="dummy_template.txt",
+parser$add_argument("-e","--error-stub","--error_stub", default="../dummy_template.txt",
                     help = "error_stub to append to main.nf, workflow, and subworkflow files")
 parser$add_argument("-s", "--nf-script","--nf_script", default=NULL,
                     help="Main NF script")
