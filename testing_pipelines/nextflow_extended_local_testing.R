@@ -3,7 +3,7 @@ suppressPackageStartupMessages(library("argparse"))
 library(rlog)
 library(stringr)
 library(XML)
-source('parameter_xml_utils.R')
+source('../create_xml/parameter_xml_utils.R')
 # create parser object
 parser <- ArgumentParser()
 parser$add_argument("-x","--parameters-xml-file","--parameters_xml_file",
