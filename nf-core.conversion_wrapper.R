@@ -114,7 +114,7 @@ schema_jsons = list.files(staging_directory,pattern="nextflow_schema.json",full.
 additional_repos = dirs_of_interest[!apply(t(dirs_of_interest),2,function(x) sum(grepl(x,schema_jsons)) > 0 )]
 for(k in 1:length(schema_jsons)){
   setwd(run_scripts)
-  run_cmd = paste("Rscript nf-core.json_to_params_xml.R --json",schema_jsons[k])
+  run_cmd = paste("Rscript create_xml/nf-core.json_to_params_xml.R --json",schema_jsons[k])
   if(args$nf_core_mode){
     run_cmd = paste(run_cmd,"--nf-core-mode")
   }
@@ -187,7 +187,7 @@ for(ig in 1:length(additional_repos)){
     xml_files = xml_files[!grepl("nfcore",xml_files)]
     xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
     pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
-    run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_script,"--workflow-language nextflow"))
+    run_cmd  = paste("Rscript create_pipeline_on_ica/nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_script,"--workflow-language nextflow"))
     run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
     run_cmd  = paste(run_cmd,"--simple-mode")
     rlog::log_info(paste("Running Non-Canonical pipeline creation",run_cmd))
@@ -312,7 +312,7 @@ if(args$create_pipeline_in_ica){
       if(length(xml_files)>0){
         pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
-            run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
+            run_cmd  = paste("Rscript create_pipeline_one_ica/nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
             run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
             run_cmd  = paste(run_cmd,"--simple-mode","--base-ica-url",args$base_ica_url)
             rlog::log_info(paste("Running",run_cmd))
