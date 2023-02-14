@@ -138,7 +138,7 @@ get_instance_type_table <- function(url){
 
 # lookup_table format found in getInstancePodAnnotation function in the nf-core.ica_mod_nf_script.R file
 getInstancePodAnnotation <- function(cpus,mem,container_name,ica_instance_table){
-  pod_annotation_prefix = paste("pod annotation:", "'scheduler.illumina.com/presetSize'", ",","value:")
+  pod_annotation_prefix = paste("pod [ annotation:", "'scheduler.illumina.com/presetSize'", ",","value:")
   pod_annotation = NULL
   pod_value = NA
   search_query = c()
@@ -172,17 +172,17 @@ getInstancePodAnnotation <- function(cpus,mem,container_name,ica_instance_table)
   } else if(length(cpus) == 0 && length(mem) > 0){
     search_query = ica_instance_table$`Mem (GB)` >= max(mem)
   } else{
-    pod_annotation = paste(pod_annotation_prefix,"'himem-small'")
+    pod_annotation = paste(pod_annotation_prefix,"'himem-small' ]")
     return(pod_annotation)
   }
   if(!is.null(container_name) && grepl("dragen",container_name)){
-    pod_annotation = paste(pod_annotation_prefix,"'fpga-medium'")
+    pod_annotation = paste(pod_annotation_prefix,"'fpga-medium' ]")
   } else if(sum(search_query) > 0){
     pod_value = ica_instance_table[search_query,]$`Compute Type`[1]
-    pod_annotation = paste(pod_annotation_prefix,paste("'",pod_value,"'",sep=""))
+    pod_annotation = paste(pod_annotation_prefix,paste("'",pod_value,"' ]",sep=""))
     return(pod_annotation)
   } else{
-    pod_annotation = paste(pod_annotation_prefix,"'himem-small'")
+    pod_annotation = paste(pod_annotation_prefix,"'himem-small' ]")
     return(pod_annotation)  
   }
 }
@@ -270,11 +270,11 @@ override_module_config <- function(module_list,ica_instance_table){
       if(!is.null(memory_declaration) | !is.null(cpu_declaration)){
         pod_declaration = getInstancePodAnnotation(cpu_declaration,memory_declaration,NULL,ica_instance_table)
         pod_declaration_split = strsplit(pod_declaration,"\\s+")[[1]]
-        pod_declaration_statement = paste(pod_declaration_split[3:length(pod_declaration_split)],sep = " ",collapse = " ")
-        if(!"pod annotation" %in% names(module_list[[module_name]][[conditional_logic]]) ){
-          rlog::log_info(paste("Adding parameter:","pod annotation","->",conditional_logic,"->",module_name))
+        pod_declaration_statement = paste(pod_declaration_split[2:length(pod_declaration_split)],sep = " ",collapse = " ")
+        if(!"pod " %in% names(module_list[[module_name]][[conditional_logic]]) ){
+          rlog::log_info(paste("Adding parameter:","pod ","->",conditional_logic,"->",module_name))
           rlog::log_info(pod_declaration_statement)
-          module_list1[[module_name]][[conditional_logic]][["pod annotation"]] = pod_declaration_statement
+          module_list1[[module_name]][[conditional_logic]][["pod"]] = pod_declaration_statement
         }
       }
     }
