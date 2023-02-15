@@ -18,7 +18,7 @@ parser$add_argument("-k","--is-simple-config","--is_simple_config",
                     action="store_true",default=FALSE, help = "Use config")
 parser$add_argument("-i","--configs-to-hardcode","--configs_to_hardcode", default="../params_to_inject.txt",
                     help="config params to inject")
-parser$add_argument("-u","--instance-type-url","--instance_type_url", default="https://help.ica.illumina.com/project/p-flow/f-pipelines#compute-types",
+parser$add_argument("-u","--instance-type-url","--instance_type_url", default="https://help.ica.illumina.com/project/p-flow/f-pipelines#definition",
                     help = "URL that contains ICA instance type table")
 parser$add_argument("-a","--modules-config-file","--modules_config_file", default = NULL,
                     help = "configuration file for modules of a pipeline")

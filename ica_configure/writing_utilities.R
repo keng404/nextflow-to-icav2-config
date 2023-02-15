@@ -38,26 +38,32 @@ create_conditional_statements = function(modules_list,module_name = NULL){
       conditional_statement_lines = c(conditional_statement_lines,keys_of_interest[j])
       conditional_statement_lines = c(conditional_statement_lines,paste("\t","process {",collapse=""))
       if(!is.null(module_name)){
-        conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",module_name,collapse=""))
+        conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",module_name," {",collapse=""))
       }
       process_keys = names(modules_list[[keys_of_interest[j]]])
       for(k in 1:length(process_keys)){
         sub_process_keys = names(modules_list[[keys_of_interest[j]]][[process_keys[k]]])
-        for(sk in 1:length(sub_process_keys)){
-          if(!is.null(module_name)){
-            conditional_statement_lines = c(conditional_statement_lines,paste("\t\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][[process_keys[k]]][[sub_process_keys[sk]]],collapse=" "))
-          } else{
-            conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][[process_keys[k]]][[sub_process_keys[sk]]],collapse=" "))
-          }
+        sub_process_value = paste(modules_list[[keys_of_interest[j]]][[process_keys[k]]],collapse=" ")
+        if(length(sub_process_value) > 0){
+            if(!is.null(module_name)){
+              conditional_statement_lines = c(conditional_statement_lines,paste("\t\t\t",process_keys[k],"=",sub_process_value,collapse=" "))
+            } else{
+              conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",process_keys[k],"=",sub_process_value,collapse=" "))
+            }
+        } else{
+          rlog::log_warn(paste("Checkout this process configuration:",keys_of_interest[j],"->",process_keys[k]))
+          rlog::log_warn(paste(modules_list[[keys_of_interest[j]]][[process_keys[k]]]))
         }
       }
     }
   }
+  conditional_statement_lines = c(conditional_statement_lines,"\t}")
+  #conditional_statement_lines = c(conditional_statement_lines,"}\n")
   return(conditional_statement_lines)
 }
 create_regular_statements = function(modules_list,module_name = NULL){
   regular_statement_lines = c()
-  statement_prefixes  = c('if','when','def','else if','else')
+  statement_prefixes  = c('default')
   config_keys = names(modules_list)
   keys_of_interest = c()
   for(i in 1:length(config_keys)){
@@ -68,21 +74,30 @@ create_regular_statements = function(modules_list,module_name = NULL){
   }
   if( length(keys_of_interest) > 0){
     for(j in 1:length(keys_of_interest)){
-      regular_statement_lines = c(regular_statement_lines,keys_of_interest[j])
+      #regular_statement_lines = c(regular_statement_lines,keys_of_interest[j])
       regular_statement_lines = c(regular_statement_lines,paste("\t","process {",collapse=""))
       if(!is.null(module_name)){
-        regular_statement_lines = c(regular_statement_lines,paste("\t\t",module_name,collapse=""))
+        regular_statement_lines = c(regular_statement_lines,paste("\t\t",module_name," {",collapse=""))
       }
-      sub_process_keys = names(modules_list[[keys_of_interest[j]]][["default"]])
-      for(sk in 1:length(sub_process_keys)){
-        if(!is.null(module_name)){
-         regular_statement_lines = c(regular_statement_lines,paste("\t\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][["default"]][[sub_process_keys[sk]]],collapse=" "))
-        } else{
-          regular_statement_lines = c(regular_statement_lines,paste("\t\t",sub_process_keys[sk],"=",modules_list[[keys_of_interest[j]]][["default"]][[sub_process_keys[sk]]],collapse=" "))
+      sub_process_keys = names(modules_list[[keys_of_interest]])
+      ##sub_process_value = paste(modules_list[[keys_of_interest[j]]][["default"]],collapse=" ")
+      
+      if(length(sub_process_keys) > 0){
+        for(sk in 1:length(sub_process_keys)){
+          sub_process_value = paste(modules_list[["default"]][[sub_process_keys[sk]]],collapse=" ")
+          if(!is.null(module_name)){
+           regular_statement_lines = c(regular_statement_lines,paste("\t\t\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
+          } else{
+            regular_statement_lines = c(regular_statement_lines,paste("\t\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
+          }
         }
+      } else{
+        rlog::log_warn(paste("Checkout this process configuration:",module_name,"->","default"))
+        rlog::log_warn(paste(modules_list[["default"]]))
       }
     }
   }
+  #regular_statement_lines = c(regular_statement_lines,"}\n")
   return(regular_statement_lines)
 }
 ######
@@ -211,6 +226,38 @@ addMemOrCPUdeclarations <- function(pod_annotation,lookup_table){
   return(declarations_to_add)
 }
 ### - ```override_module_config``` - override module configs for (cpus, memory)
+remove_duplicate_elements <- function(test_expression){
+  revised_parameter_value = test_expression
+  revised_parameter_value_split = strsplit(test_expression,"\\s+")[[1]]
+  pattern_found_set = c()
+  pattern_found_sets = c()
+  rlog::log_info(paste("SPLIT_UP_NEW_PARAM_VALUE:",paste(revised_parameter_value_split,collapse=", "),sep=" ",collapse = " "))
+  for(rpvs in 1:length(revised_parameter_value_split)){
+    if(length(pattern_found_set) == 0 & revised_parameter_value_split[rpvs] == "],"){
+      pattern_found_set = c(pattern_found_set,rpvs)
+    } else if(length(pattern_found_set) > 0 & revised_parameter_value_split[rpvs] == "],"){
+      pattern_found_set = c(pattern_found_set,pattern_found_set[length(pattern_found_set)])
+    } else if(length(pattern_found_set) > 0 & revised_parameter_value_split[rpvs] != "],"){
+      pattern_found_sets = c(pattern_found_sets,pattern_found_set)
+      pattern_found_set = c()
+    }
+  }
+  if(length(pattern_found_sets)>0){
+    indexes_to_keep = c()
+    intervals_of_interest = rle(pattern_found_sets)
+    main_idx = 1
+    for(ints in 1:length(intervals_of_interest$lengths)){
+      lower_bound = intervals_of_interest$values[ints]
+      upper_bound = lower_bound + intervals_of_interest$lengths[ints] - 1
+      if(main_idx < length(revised_parameter_value_split)){
+        indexes_to_keep = c(indexes_to_keep,main_idx:lower_bound)
+        main_idx = upper_bound + 1
+      }
+    }
+    revised_parameter_value = revised_parameter_value_split[indexes_to_keep]
+  }
+  return(revised_parameter_value)
+}
 
 override_module_config <- function(module_list,ica_instance_table){
   module_list1 = module_list
@@ -222,59 +269,94 @@ override_module_config <- function(module_list,ica_instance_table){
     for(j in 1:length(names(sub_conf))){
       conditional_logic = names(sub_conf)[j]
       config_names = names(module_list[[module_name]][[conditional_logic]])
-      memory_declaration = NULL
-      cpu_declaration = NULL
-      pod_declaration = NULL
-      for(k in 1:length(config_names)){
-        config_parameter = config_names[k]
-        if(config_parameter %in% overrides){
-          rlog::log_info(paste("Overridding parameter:",config_parameter,"->",conditional_logic,"->",module_name))
-          if(config_parameter == "cpus"){
-            cpu_declaration =  parameter_value_split[l + 1]
-          } else if(config_parameter == "memory"){
-            memory_declaration =  parameter_value_split[l + 1]
-          }
-          
-        } else if(config_parameter %in% double_check){
-          rlog::log_info(paste("Double-Checking for parameter:",config_parameter,"->",conditional_logic,"->",module_name))
-          path_count = 0
-          pattern_count = 0
-          revised_parameter_value = c()
-          parameter_value = module_list[[module_name]][[conditional_logic]][[config_parameter]]
-          parameter_value_split = strsplit(parameter_value,"\\s+")[[1]]
-          for(l in 1:length(parameter_value_split)){
-            if(parameter_value_split[l] == "path:"){
-              revised_parameter_value[l] = "[ path:"
-              path_count = path_count + 1
-            } else if(parameter_value_split[l] == "pattern:"){
-              if(l < (length(parameter_value_split)-1)){
-                string_of_interest = parameter_value_split[l + 1]
-                parameter_value_split[l + 1] = paste(string_of_interest,"],",collapse = " ")
-                pattern_count = pattern_count + 1
-              } else{
-                string_of_interest = parameter_value_split[l + 1]
-                parameter_value_split[l + 1] = paste(string_of_interest,"]",collapse = " ")
-                pattern_count = pattern_count + 1
-              }
-              revised_parameter_value[l] = parameter_value_split[l] 
-            } else{
-              revised_parameter_value[l] = parameter_value_split[l]               
+      if(length(config_names) == 0){
+        rlog::log_warn(paste("SKIPPING configuration check for:",conditional_logic,"->",module_name))
+        memory_declaration = NULL
+        cpu_declaration = NULL
+        pod_declaration = NULL
+        next
+      } else{
+        rlog::log_info(paste("Found Configuration parameters:",paste(config_names,collapse=", "),"->",conditional_logic,"->",module_name))
+        memory_declaration = NULL
+        cpu_declaration = NULL
+        pod_declaration = NULL
+        for(k in 1:length(config_names)){
+          config_parameter = config_names[k]
+          if(config_parameter %in% overrides){
+            rlog::log_info(paste("Overridding parameter:",config_parameter,"->",conditional_logic,"->",module_name))
+            if(config_parameter == "cpus"){
+              cpu_declaration =  parameter_value_split[l + 1]
+            } else if(config_parameter == "memory"){
+              memory_declaration =  parameter_value_split[l + 1]
             }
-            new_parameter_value = paste(revised_parameter_value,collapse = " ",sep = " ")
-            module_list1[[module_name]][[conditional_logic]][[config_parameter]] = new_parameter_value
+            
+          } else if(config_parameter %in% double_check){
+            rlog::log_info(paste("Double-Checking for parameter:",config_parameter,"->",conditional_logic,"->",module_name))
+            path_count = 0
+            pattern_count = 0
+            revised_parameter_value = c()
+            parameter_value = module_list[[module_name]][[conditional_logic]][[config_parameter]]
+            rlog::log_info(paste("PARAMETER_VALUE:",parameter_value,collapse = " "))
+            parameter_value_split = strsplit(parameter_value,"\\s+")[[1]]
+            parameter_value_split = parameter_value_split[ parameter_value_split != "" ]
+            if(!grepl("\\[",parameter_value_split[1] ) & !grepl("\\]",parameter_value_split[length(parameter_value_split)])){
+                rlog::log_info(paste("ATTEMPTING TO REVISE PARAMETER VALUE"))
+              for(l in 1:length(parameter_value_split)){
+                if(parameter_value_split[l] == "path:"){
+                  if( l >1 ){
+                    if(!grepl("\\[",parameter_value_split[l-1])){
+                      revised_parameter_value[l] = "[ path:"
+                    }
+                  } else{
+                    revised_parameter_value[l] = "[ path:"
+                  }
+                  path_count = path_count + 1
+                } else if(parameter_value_split[l+1] == "path:" | l == length(parameter_value_split)){
+                  if(l < (length(parameter_value_split)-1)){
+                    string_of_interest = parameter_value_split[l + 1]
+                    if(!grepl("\\]",string_of_interest)){
+                      parameter_value_split[l + 1] = paste(string_of_interest,"],",collapse = " ")
+                    }
+                    pattern_count = pattern_count + 1
+                  } else if(l == length(parameter_value_split)){
+                      string_of_interest = parameter_value_split[l]
+                      if(!grepl("\\]",string_of_interest)){
+                        parameter_value_split[l] = paste(string_of_interest,"]",collapse = " ")
+                      }
+                      pattern_count = pattern_count + 1
+                    } 
+                  revised_parameter_value[l] = parameter_value_split[l] 
+                } else{
+                  revised_parameter_value[l] = parameter_value_split[l]               
+                }
+              }
+                ## weird workaround for sanitizing the publishDir statements
+                revised_parameter_value[is.na(revised_parameter_value)] = "path:"
+                revised_parameter_value = revised_parameter_value[!is.na(revised_parameter_value)]
+                new_parameter_value = paste(revised_parameter_value,collapse = " ",sep = " ")
+                new_parameter_value = gsub("],","",new_parameter_value)
+                rlog::log_info(paste("INITIAL_REVISED_PARAMETER_VALUE:",new_parameter_value,collapse = " ",sep = " "))
+                #revised_parameter_value = remove_duplicate_elements(new_parameter_value)
+                #################
+                new_parameter_value = paste(revised_parameter_value,collapse = " ",sep = " ")
+                rlog::log_info(paste("REVISED_PARAMETER_VALUE:",new_parameter_value,collapse = " ",sep = " "))
+                module_list1[[module_name]][[conditional_logic]][[config_parameter]] = new_parameter_value
+            } else{
+                rlog::log_info(paste("SKIPPING_PARAMETER_REVISION"))
+            }
+          } else{
+            rlog::log_info(paste("Skipping checks for parameter:",config_parameter,"->",conditional_logic,"->",module_name))
           }
-        } else{
-          rlog::log_info(paste("Skipping checks for parameter:",config_parameter,"->",conditional_logic,"->",module_name))
         }
-      }
-      if(!is.null(memory_declaration) | !is.null(cpu_declaration)){
-        pod_declaration = getInstancePodAnnotation(cpu_declaration,memory_declaration,NULL,ica_instance_table)
-        pod_declaration_split = strsplit(pod_declaration,"\\s+")[[1]]
-        pod_declaration_statement = paste(pod_declaration_split[2:length(pod_declaration_split)],sep = " ",collapse = " ")
-        if(!"pod " %in% names(module_list[[module_name]][[conditional_logic]]) ){
-          rlog::log_info(paste("Adding parameter:","pod ","->",conditional_logic,"->",module_name))
-          rlog::log_info(pod_declaration_statement)
-          module_list1[[module_name]][[conditional_logic]][["pod"]] = pod_declaration_statement
+        if(!is.null(memory_declaration) | !is.null(cpu_declaration)){
+          pod_declaration = getInstancePodAnnotation(cpu_declaration,memory_declaration,NULL,ica_instance_table)
+          pod_declaration_split = strsplit(pod_declaration,"\\s+")[[1]]
+          pod_declaration_statement = paste(pod_declaration_split[2:length(pod_declaration_split)],sep = " ",collapse = " ")
+          if(!"pod " %in% names(module_list[[module_name]][[conditional_logic]]) ){
+            rlog::log_info(paste("Adding parameter:","pod ","->",conditional_logic,"->",module_name))
+            rlog::log_info(pod_declaration_statement)
+            module_list1[[module_name]][[conditional_logic]][["pod"]] = pod_declaration_statement
+          }
         }
       }
     }
@@ -283,10 +365,15 @@ override_module_config <- function(module_list,ica_instance_table){
 }
 
 ###- ```write_modules``` - consumes output of modules_to_list and write new ```modules.config``` file 
-write_modules <- function(modules_list,output_file=NULL,template_file=NULL){
-  modules_list1 = override_module_config(module_list)
-  if(length(names(module_list1)) > 0 ){
-    module_list = module_list1
+write_modules <- function(modules_list=NULL,output_file=NULL,template_file=NULL){
+  if(!is.null(modules_list)){
+    modules_list1 = override_module_config(modules_list)
+  } else{
+    modules_list = NULL
+    modules_list1 = NULL
+  }
+  if(length(names(modules_list1)) > 0 ){
+    modules_list = modules_list1
   }
   new_lines = c()
   if(is.null(output_file)){
@@ -309,15 +396,19 @@ write_modules <- function(modules_list,output_file=NULL,template_file=NULL){
   keys_of_interest = names(modules_list)
   keys_of_interest = keys_of_interest[keys_of_interest!="general"]
   #######
-  for(koi in 1:length(keys_of_interest)){
-    conditional_config_data = create_conditional_statements(modules_list[[keys_of_interest[koi]]],keys_of_interest[koi])
-    if(length(conditional_config_data) > 0 ){
-      new_lines = c(new_lines,conditional_config_data)
+  if(length(keys_of_interest) > 0){
+    for(koi in 1:length(keys_of_interest)){
+      conditional_config_data = create_conditional_statements(modules_list[[keys_of_interest[koi]]],keys_of_interest[koi])
+      if(length(conditional_config_data) > 0 ){
+        new_lines = c(new_lines,conditional_config_data)
+      }
+      config_data = create_regular_statements(modules_list[[keys_of_interest[koi]]],keys_of_interest[koi])
+      if(length(config_data) > 0){
+        new_lines = c(new_lines,config_data)
+      }
     }
-    config_data = create_regular_statements(modules_list[[keys_of_interest[koi]]],keys_of_interest[koi])
-    if(length(config_data) > 0){
-      new_lines = c(new_lines,config_data)
-    }
+  } else{
+    rlog::log_warn(paste("NOT adding configuration"))
   }
 #########  
   rlog::log_info(paste("WRITING out modules configuration to:",output_file))

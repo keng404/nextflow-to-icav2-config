@@ -413,10 +413,14 @@ loadModuleMetadata <- function(config_files){
               }
             }
             #  }
-          } else if(in_process_closure && clean_line[1] == "withName:" ){
+          } else if(in_process_closure && (clean_line[1] == "withName:" | clean_line[1] == "withLabel:" )){
             in_module_closure = TRUE
             module_name = gsub("\\'","",trimws(clean_line[2]))
-            module_name = paste("withName:",module_name,sep="")
+            if(grepl("withName:",clean_line[1])){
+              module_name = paste("withName:",module_name,sep="")
+            } else{
+              module_name = paste("withLabel:",module_name,sep="")
+            }
             rlog::log_info(paste("Initializing info for module:",module_name,"condition:",condition_for_config))
             modulesMetadata[[module_name]] = list()
             modulesMetadata[[module_name]][[condition_for_config]] = list()
@@ -476,7 +480,7 @@ loadModuleMetadata <- function(config_files){
               moduleMetadata[[parameter_name]] = value_collection
               value_collection = c()
             }
-          } else if(in_process_closure && in_module_closure && (clean_line[1] == "}"  || grepl("\\}$",clean_line[length(clean_line)]))){
+          } else if(in_process_closure && in_module_closure && !("{" %in% clean_line & "}" %in% clean_line) && (clean_line[1] == "}"  || grepl("\\}$",clean_line[length(clean_line)]))){
             in_module_closure = FALSE
             modulesMetadata[[module_name]][[condition_for_config]] = moduleMetadata
             rlog::log_info(paste("Updating info for module:",module_name,"condition:",condition_for_config))
@@ -489,7 +493,7 @@ loadModuleMetadata <- function(config_files){
               parameter_name = paste("process.",parameter_name,sep="")
             }
             if(parameter_name == "publishDir"){
-              rlog::log_info(paste("IGNORING publishDir configuration for now"))
+              rlog::log_info(paste("FOUND publishDir configuration"))
               value_to_add = paste(clean_line[3:length(clean_line)],collapse=" ")
               value_to_add = trimws(value_to_add)
               value_to_add_split = strsplit(value_to_add,"\\s+")[[1]]

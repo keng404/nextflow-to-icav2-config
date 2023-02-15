@@ -1,8 +1,18 @@
 options(stringsAsFactors=FALSE)
 library(rlog)
 library(stringr)
-source('reading_utils.R')
-source('writing_utilities.R')
+#####
+getRelativePath = function(to, from ){
+  to_split = strsplit(to,"/")[[1]]  
+  from_split = strsplit(from,"/")[[1]]
+  idx = 1
+  last_idx = idx
+  while(to_split[idx] == from_split[idx]){
+    last_idx = idx
+    idx = idx + 1
+  }
+  return(paste(to_split[(last_idx+1):length(to_split)],collapse="/"))
+}
 ### ```params_to_strip``` - loads ```params_to_strip.txt``` template and passes list to downstream function
 params_to_strip <- function(template_file){
   template_data = read.delim(template_file,quote="",header=F)
@@ -45,8 +55,9 @@ inject_params <- function(params_list, params_to_inject){
   params_list1 = params_list
   params_to_inject_list = list()
   for(i in 1:length(params_to_inject)){
-    line_split = strsplit(params_to_inject,"\\s+")[[1]]
+    line_split = strsplit(params_to_inject[i],"\\s+")[[1]]
     line_split = apply(t(line_split),2,trimws)
+    rlog::log_info(paste("INJECT_PARAM:",line_split[1],"=",line_split[3],collapse = " "))
     params_to_inject_list[[line_split[1]]] = line_split[3]
   }
   
@@ -56,12 +67,16 @@ inject_params <- function(params_list, params_to_inject){
     for(i in 1:length(keys_already_present)){
       params_list1[[keys_already_present[i]]] = params_list[[keys_already_present[[i]]]]
     }
-    for(j in 1:length(keys_not_present)){
-      params_list1[[keys_not_present[j]]] = params_to_inject_list[[keys_not_present[[j]]]]
+    if(length(keys_not_present)>0){
+      for(j in 1:length(keys_not_present)){
+        params_list1[[keys_not_present[j]]] = params_to_inject_list[[keys_not_present[[j]]]]
+      }
     }
   } else{
-    for(j in 1:length(keys_not_present)){
-      params_list1[[keys_not_present[j]]] = params_to_inject_list[[keys_not_present[[j]]]]
+    if(length(keys_not_present)>0){
+      for(j in 1:length(keys_not_present)){
+        params_list1[[keys_not_present[j]]] = params_to_inject_list[[keys_not_present[[j]]]]
+      }
     }
   }
   return(params_list1)
@@ -69,11 +84,21 @@ inject_params <- function(params_list, params_to_inject){
 ##########
 
 ###```add_module_reference``` - Add in reference to ```nextflow.config``` file ```includeConfig 'conf/modules.config' ```
-add_module_reference <- function(nextflow_config,additional_config='conf/modules.ica.config'){
+add_module_reference <- function(nextflow_config,existing_module_file=NULL,additional_config='conf/modules.ica.config'){
   reference_statement = paste("includeConfig",paste("'",additional_config,"'",collapse="",sep=""),collapse=" ")
   nextflow_config_data = read.delim(nextflow_config,quote="",header=F)
   nextflow_config_data = t(nextflow_config_data)
-  nextflow_config_data = c(nextflow_config_data,reference_statement)
+  if(!is.null(existing_module_file)){
+    nextflow_config_data1 = nextflow_config_data
+    for(i in 1:length(nextflow_config_data1)){
+      if(grepl(existing_module_file,nextflow_config_data1[i])){
+        nextflow_config_data1[i] = reference_statement
+      }
+    }
+    nextflow_config_data = nextflow_config_data1
+  } else{
+    nextflow_config_data = c(nextflow_config_data,reference_statement)
+  }
   rlog::log_info(paste("UPDATING",nextflow_config))
   updated_nextflow_config_file = gsub(".config$",".config.tmp",nextflow_config)
   write.table(x=nextflow_config_data,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)
