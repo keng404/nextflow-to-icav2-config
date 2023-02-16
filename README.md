@@ -2,7 +2,7 @@
 R-based helper scripts to generate XML files and modifications to NF scripts for ICAv2 compatiblity.
 This is an unofficial developer tool to help them develop Nextflow pipelines that will run successfully on ICA. There are some syntax bugs that may get introduced in your nextflow code. One suggestion is to run the steps as described below and then open up these files in VisualStudio Code with the nextflow plugin installed. You may also need to run smoke tests on your code to identify syntax errors you might not catch upon first glance. 
 
-## smoke testing your nextflow pipeline after using these scripts
+## local testing your nextflow pipeline after using these scripts
 This [naive wrapper](https://github.com/keng404/nextflow-to-icav2-config/blob/master/testing_pipelines/test_nextflow_script.R) will allow you to test your main.nf script. If you have a nextflow pipeline that is more nf-core like (i.e. where you may have several subworkflow and module files) this [script](https://github.com/keng404/nextflow-to-icav2-config/blob/master//esting_pipelines/nextflow_extended_local_testing.R) may be more appropriate. Any and all comments are welcome.
 
 Some examples of nextflow pipelines that have been lifted over with this repo can be found [here](https://github.com/keng404/ica_nextflow_demos)
@@ -22,9 +22,9 @@ Nextflow workflows on ICA are orchestrated by kubernetes and require a parameter
 - containing data inputs (i.e. files + folders) and other string-based options for all configurable parameters to properly be passed from ICA to your Nextflow workflows
 - processes will need to contain a reference to a container --- a Docker image that will run that specific process
 - processes will need a  ```pod annotation``` specified for ICA to know what instance type to run the process.
-  - A table of instance types and the associated CPU + Memory specs can be found [here](https://illumina.gitbook.io/ica/project/p-flow/f-pipelines#compute-types)  
+  - A table of instance types and the associated CPU + Memory specs can be found [here](https://help.ica.illumina.com/project/p-flow/f-pipelines#definition) under a table named `Compute Types`
 
-These scripts have been made to be compatible with [nf-core](https://github.com/nf-core) workflows
+These scripts have been made to be compatible with [nf-core](https://github.com/nf-core) workflows, so you may find the concepts from the documentation here a better starting point.
 
 # Using these scripts
 
