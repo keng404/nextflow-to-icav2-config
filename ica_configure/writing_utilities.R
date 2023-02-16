@@ -57,7 +57,10 @@ create_conditional_statements = function(modules_list,module_name = NULL){
       }
     }
   }
-  conditional_statement_lines = c(conditional_statement_lines,"\t}")
+  if(length(conditional_statement_lines)>0){
+    conditional_statement_lines = c(conditional_statement_lines,"\t}")
+    conditional_statement_lines = c(conditional_statement_lines,"}\n")
+  }
   #conditional_statement_lines = c(conditional_statement_lines,"}\n")
   return(conditional_statement_lines)
 }
@@ -97,7 +100,10 @@ create_regular_statements = function(modules_list,module_name = NULL){
       }
     }
   }
-  #regular_statement_lines = c(regular_statement_lines,"}\n")
+  if(length(regular_statement_lines) > 0){
+    regular_statement_lines = c(regular_statement_lines,"\t\t}\n")
+    regular_statement_lines = c(regular_statement_lines,"\t}\n")
+  }
   return(regular_statement_lines)
 }
 ######
@@ -284,10 +290,16 @@ override_module_config <- function(module_list,ica_instance_table){
           config_parameter = config_names[k]
           if(config_parameter %in% overrides){
             rlog::log_info(paste("Overridding parameter:",config_parameter,"->",conditional_logic,"->",module_name))
-            if(config_parameter == "cpus"){
-              cpu_declaration =  parameter_value_split[l + 1]
-            } else if(config_parameter == "memory"){
-              memory_declaration =  parameter_value_split[l + 1]
+            if(config_parameter == "cpus" & !("pod" %in% config_names)){
+              cpu_value_str = module_list[[module_name]][[conditional_logic]][[config_parameter]]
+              cpu_values = unlist(stringr::str_extract_all(cpu_value_str,"[0-9]+"))
+              cpu_value = max(cpu_values)
+              cpu_declaration =  strtoi(cpu_value)
+            } else if(config_parameter == "memory" & !("pod" %in% config_names)){
+              memory_value_str = module_list[[module_name]][[conditional_logic]][[config_parameter]]
+              memory_values = unlist(stringr::str_extract_all(memory_value_str,"[0-9]+"))
+              memory_value = max(memory_values)
+              memory_declaration =  strtoi(memory_value)
             }
             
           } else if(config_parameter %in% double_check){
@@ -349,7 +361,7 @@ override_module_config <- function(module_list,ica_instance_table){
           }
         }
         if(!is.null(memory_declaration) | !is.null(cpu_declaration)){
-          pod_declaration = getInstancePodAnnotation(cpu_declaration,memory_declaration,NULL,ica_instance_table)
+          pod_declaration = getInstancePodAnnotation(cpus=cpu_declaration,mem=memory_declaration,container_name=NULL,ica_instance_table=ica_instance_table)
           pod_declaration_split = strsplit(pod_declaration,"\\s+")[[1]]
           pod_declaration_statement = paste(pod_declaration_split[2:length(pod_declaration_split)],sep = " ",collapse = " ")
           if(!"pod " %in% names(module_list[[module_name]][[conditional_logic]]) ){

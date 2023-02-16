@@ -382,6 +382,9 @@ loadModuleMetadata <- function(config_files){
           rlog::log_info(paste("PROCESS_CLOSURE:",in_process_closure))
           rlog::log_info(paste("MODULE_CLOSURE:",in_module_closure))
           rlog::log_info(paste("CLEANED_LINE:",paste(clean_line,collapse=" ")))
+          rlog::log_info(paste("EXPRESSION_CLOSURE:",in_expression))
+          rlog::log_info(paste("CONDITION_FOR_CONFIGURATION:",condition_for_config))
+          rlog::log_info(paste("PARAMETER_NAME:",parameter_name))
           if(clean_line[1] == "process"){
             in_process_closure = TRUE
           } else if(clean_line[1] %in% statement_prefixes){
@@ -413,12 +416,16 @@ loadModuleMetadata <- function(config_files){
               }
             }
             #  }
-          } else if(in_process_closure && (clean_line[1] == "withName:" | clean_line[1] == "withLabel:" )){
+          } else if(in_process_closure && (clean_line[1] == "withName:" | grepl("withName:",clean_line[1]) | clean_line[1] == "withLabel:"|grepl("withLabel:",clean_line[1])) ){
             in_module_closure = TRUE
-            module_name = gsub("\\'","",trimws(clean_line[2]))
+            if(!grepl("\\{",clean_line[2])){
+              module_name = gsub("\\'","",trimws(clean_line[2]))
+            } else{
+              module_name = trimws(strsplit(clean_line[1],"\\:")[[1]][2])
+            }
             if(grepl("withName:",clean_line[1])){
               module_name = paste("withName:",module_name,sep="")
-            } else{
+            } else if(grepl("withLabel:",clean_line[1])){
               module_name = paste("withLabel:",module_name,sep="")
             }
             rlog::log_info(paste("Initializing info for module:",module_name,"condition:",condition_for_config))

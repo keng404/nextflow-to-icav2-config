@@ -91,7 +91,7 @@ add_module_reference <- function(nextflow_config,existing_module_file=NULL,addit
   if(!is.null(existing_module_file)){
     nextflow_config_data1 = nextflow_config_data
     for(i in 1:length(nextflow_config_data1)){
-      if(grepl(existing_module_file,nextflow_config_data1[i])){
+      if(grepl(basename(existing_module_file),nextflow_config_data1[i])){
         nextflow_config_data1[i] = reference_statement
       }
     }

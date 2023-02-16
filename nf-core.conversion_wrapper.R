@@ -15,8 +15,10 @@ parser$add_argument("-s","--staging-directory", "--staging_directory", default=N
                     required = TRUE, help="staging_directory to stage nf-core pipelines")
 parser$add_argument("-r", "--run-scripts","--run_scripts", default=NULL,
                     help="run_script directory for this pipeline")
-parser$add_argument("-d", "--no-dsl2-check","--no_dsl2_check", action="store_true",default=FALSE,
+parser$add_argument("-d", "--dsl2-check","--dsl2_check", action="store_true",default=FALSE,
                     help="run_script directory for this pipeline")
+parser$add_argument("-v", "--develop-mode","--develop_mode", action="store_true",default=FALSE,
+                    help="develop a pipeline to run on ICA")
 parser$add_argument("-c", "--create-pipeline-in-ica","--create_pipeline_in_ica", action="store_true",default=FALSE,
                     help="Create pipeline in ICA")
 parser$add_argument("-a", "--api-key-file","--api_key_file", default = NULL,
@@ -111,7 +113,6 @@ for(j in 1:length(names(nf_pipelines_metadata))){
 rlog::log_info(paste("Generate parameter XML files"))
 dirs_of_interest = list.dirs(staging_directory,recursive = FALSE) 
 schema_jsons = list.files(staging_directory,pattern="nextflow_schema.json",full.names=T,recursive = T)
-additional_repos = dirs_of_interest[!apply(t(dirs_of_interest),2,function(x) sum(grepl(x,schema_jsons)) > 0 )]
 for(k in 1:length(schema_jsons)){
   setwd(run_scripts)
   run_cmd = paste("Rscript create_xml/nf-core.json_to_params_xml.R --json",schema_jsons[k])
@@ -157,46 +158,8 @@ nextflow_configs = list()
 dsl2_nextflow_scripts = list()
 dsl2_nextflow_configs = list()
 configs_to_ignore_list = list()
+base_configs_list = list()
 
-
-## running the full conversion loop for  scripts and non-standard-repos
-for(ig in 1:length(additional_repos)){
-  nextflow_script = paste(additional_repos[ig],"main.nf",sep="/")
-  main_config  = paste(additional_repos[ig],"nextflow.config",sep="/")
-  configs_to_ignore = list.files(dirname(nextflow_script),pattern="*config",full.names=T,recursive=T)
-  if(length(configs_to_ignore) > 0 ){
-    configs_ignore_bool = apply(t(configs_to_ignore),2,function(x) basename(x) == "genomes.config")
-    configs_to_ignore = configs_to_ignore[configs_ignore_bool]
-    configs_to_ignore = configs_to_ignore[!is.na(configs_to_ignore)]
-    rlog::log_info(paste(nextflow_script,"Nextflow Configs to Ignore",paste(configs_to_ignore,collapse=",")))
-  } else{
-    configs_to_ignore = NULL
-  }
-  if(file.exists(nextflow_script) && file.exists(main_config)){
-    run_cmd = paste("Rscript nf-core.ica_mod_nf_script.R","--nf-script",nextflow_script,"--config_file",main_config,"--intermediate-copy-template",args$intermediate_copy_template,"--generate-parameters-xml")
-    if(length(configs_to_ignore) > 0){
-      run_cmd = run_cmd
-      for(p in 1:length(configs_to_ignore)){
-        run_cmd = paste(run_cmd,"--configs-to-ignore",configs_to_ignore[p])
-      }
-    }
-    rlog::log_info(paste("Running Non-Canonical script modification",run_cmd))
-    system(run_cmd)
-    
-    xml_files = list.files(dirname(nextflow_script),"*.pipeline.xml",full.names=T)
-    xml_files = xml_files[!grepl("nfcore",xml_files)]
-    xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
-    pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
-    run_cmd  = paste("Rscript create_pipeline_on_ica/nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_script,"--workflow-language nextflow"))
-    run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
-    run_cmd  = paste(run_cmd,"--simple-mode")
-    rlog::log_info(paste("Running Non-Canonical pipeline creation",run_cmd))
-    system(run_cmd)
-  } else{
-    rlog::log_warn(paste("SKIPPING CONVERSION for",dirname(nextflow_script)))
-  }
-
-}
 
 if(length(schema_jsons) >0 ){
   for(k in 1:length(schema_jsons)){
@@ -210,6 +173,10 @@ if(length(schema_jsons) >0 ){
    configs_to_ignore = list.files(dirname(schema_jsons[k]),pattern="*config",full.names=T,recursive=T)
    if(length(configs_to_ignore) > 0){
      configs_ignore_bool = apply(t(configs_to_ignore),2,function(x) basename(x) == "genomes.config")
+     base_configs_bool = apply(t(configs_to_ignore),2,function(x) grepl("base\\.", basename(x)))
+     base_configs = configs_to_ignore[base_configs_bool]
+     base_configs = base_configs[!is.na(base_configs)][1]
+     base_configs_list[[schema_jsons[k]]] = base_configs
      if(sum(configs_ignore_bool) > 0 ){
        configs_to_ignore = configs_to_ignore[configs_ignore_bool]
        configs_to_ignore = configs_to_ignore[!is.na(configs_to_ignore)]
@@ -222,7 +189,7 @@ if(length(schema_jsons) >0 ){
        configs_to_ignore = NULL
    }
    if(length(nextflow_script) > 0 && length(main_config) > 0){
-     if(!args$no_dsl2_check){
+     if(!args$dsl2_check){
        if(!dsl2_enabled(nextflow_script)){
          nextflow_scripts[[schema_jsons[k]]] = nextflow_script
          nextflow_configs[[schema_jsons[k]]] = main_config
@@ -258,29 +225,32 @@ if(length(schema_jsons) >0 ){
       if(!is.null(args$intermediate_copy_template)){
         rlog::log_info(paste("ADDING dummy process to copy intermediate files from",args$intermediate_copy_template))
         if(scripts_to_update[l] %in% names(nextflow_scripts)){
-          run_cmd = paste("Rscript nf-core.ica_mod_nf_script.R","--nf-script",nextflow_scripts[[scripts_to_update[l]]],"--config_file",nextflow_configs[[scripts_to_update[l]]],"--intermediate-copy-template",args$intermediate_copy_template)
+          if(scripts_to_update[l] %in% names(base_configs_list)){
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_scripts[[scripts_to_update[l]]],"--base-config-files" ,base_configs_list[[scripts_to_update[l]]] )
+          } else{
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_scripts[[scripts_to_update[l]]])
+          }
         } else{
-          run_cmd = paste("Rscript nf-core.ica_mod_nf_script.R","--nf-script",dsl2_nextflow_scripts[[scripts_to_update[l]]],"--config_file",dsl2_nextflow_configs[[scripts_to_update[l]]],"--intermediate-copy-template",args$intermediate_copy_template)
-          
+          if(scripts_to_update[l] %in% names(base_configs_list)){
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",dsl2_nextflow_configs[[scripts_to_update[l]]],"--base-config-files" ,base_configs_list[[scripts_to_update[l]]] )
+          } else{
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",dsl2_nextflow_configs[[scripts_to_update[l]]])
+          }
         }
       } else{
         if(scripts_to_update[l] %in% names(nextflow_scripts)){
-          run_cmd = paste("Rscript nf-core.ica_mod_nf_script.R","--nf-script",nextflow_scripts[[scripts_to_update[l]]],"--config_file",nextflow_configs[[scripts_to_update[l]]])
+          if(scripts_to_update[l] %in% names(base_configs_list)){
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_configs[[scripts_to_update[l]]],"--base-config-files" ,base_configs_list[[scripts_to_update[l]]] )
+          } else{
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_configs[[scripts_to_update[l]]])
+          }
         } else{
-          run_cmd = paste("Rscript nf-core.ica_mod_nf_script.R","--nf-script",dsl2_nextflow_scripts[[scripts_to_update[l]]],"--config_file",dsl2_nextflow_configs[[scripts_to_update[l]]])
+          if(scripts_to_update[l] %in% names(base_configs_list)){
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",dsl2_nextflow_configs[[scripts_to_update[l]]],"--base-config-files" ,base_configs_list[[scripts_to_update[l]]] )
+          } else{
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",dsl2_nextflow_configs[[scripts_to_update[l]]])
+          }
         }
-      }
-      if(scripts_to_update[l] %in% names(configs_to_ignore_list)){
-        configs_to_ignore = configs_to_ignore_list[[scripts_to_update[l]]]
-        if(length(configs_to_ignore) > 0){
-          run_cmd = run_cmd
-            for(p in 1:length(configs_to_ignore)){
-              run_cmd = paste(run_cmd,"--configs-to-ignore",configs_to_ignore[p])
-            }
-        }
-      }
-      if(scripts_to_update[l] %in% dsl2_scripts_to_update){
-        run_cmd = paste(run_cmd,"--dsl2-enabled")
       }
       rlog::log_info(paste("Running",run_cmd))
       system(run_cmd)
@@ -288,6 +258,61 @@ if(length(schema_jsons) >0 ){
     } else{
       rlog::log_info(paste("No NF scripts found\nCheck",paste(all_nf_scripts,collapse = ", ")))
     }
+}
+####
+### add in helpful 
+if(length(names(nextflow_scripts)) > 0 ){
+  all_nf_scripts = names(nextflow_scripts)
+  scripts_to_update = all_nf_scripts[all_nf_scripts %in% names(nextflow_configs)]
+  scripts_skipped = all_nf_scripts[!all_nf_scripts %in% scripts_to_update]
+  ####################
+  dsl2_scripts_to_update = names(dsl2_nextflow_scripts)
+  scripts_to_update = c(scripts_to_update,dsl2_scripts_to_update)
+  scripts_skipped =scripts_skipped[!scripts_skipped %in% dsl2_scripts_to_update]
+  for(l in 1:length(scripts_to_update)){
+    setwd(run_scripts)
+    workflow_scripts = c()
+    workflow_scripts_to_add = list.files(paste(dirname(nextflow_configs[[scripts_to_create[l]]]),"workflows",sep="/"),pattern="*nf$",full.names=T,recursive = T)
+    workflow_scripts = c(workflow_scripts,workflow_scripts_to_add)
+    subworkflow_scripts_to_add = list.files(paste(dirname(nextflow_configs[[scripts_to_create[l]]]),"subworkflows",sep="/"),pattern="*nf$",full.names=T,recursive = T)
+    workflow_scripts = c(workflow_scripts,subworkflow_scripts_to_add)
+    if(scripts_to_create[l] %in% names(nextflow_scripts)){
+      xml_files = list.files(dirname(nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
+      xml_files = xml_files[!grepl("nfcore",xml_files)]
+      xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
+      if(length(xml_files)>0){
+        pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
+        run_cmd = paste("Rscript develop_mode.downstream.R  --config-file", nextflow_configs[[scripts_to_create[l]]],"--generate-parameters-xml --parameters-xml", xml_files[1], "--nf-script", nextflow_scripts[[scripts_to_create[l]]])
+        if(length(workflow_scripts) > 0){
+          for(wsi in 1:length(workflow_scripts)){
+            run_cmd = paste(run_cmd,"--other-workflow-scripts", workflow_scripts[wsi])
+          }
+        }
+        rlog::log_info(paste("Adding helper-debug code",run_cmd))
+        system(run_cmd)
+      } else{
+        rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]])))
+      }
+    }
+    else{
+        xml_files = list.files(dirname(dsl2_nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
+        xml_files = xml_files[!grepl("nfcore",xml_files)]
+        xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
+      if(length(xml_files)>0){
+        pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
+        run_cmd = paste("Rscript develop_mode.downstream.R  --config-file", dsl2_nextflow_configs[[scripts_to_create[l]]],"--generate-parameters-xml --parameters-xml", xml_files[1], "--nf-script", dsl2_nextflow_scripts[[scripts_to_create[l]]])
+        if(length(workflow_scripts) > 0){
+          for(wsi in 1:length(workflow_scripts)){
+            run_cmd = paste(run_cmd,"--other-workflow-scripts", workflow_scripts[wsi])
+          }
+        }
+        rlog::log_info(paste("Adding helper-debug code",run_cmd))
+        system(run_cmd)
+      } else{
+        rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
+      }
+    }
+  }
 }
 ### Create our pipelines in ICA.
 if(args$create_pipeline_in_ica){
@@ -312,14 +337,18 @@ if(args$create_pipeline_in_ica){
       if(length(xml_files)>0){
         pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
-            run_cmd  = paste("Rscript create_pipeline_one_ica/nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
+            run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
+            run_cmd  = paste(run_cmd,"--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))
             run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
-            run_cmd  = paste(run_cmd,"--simple-mode","--base-ica-url",args$base_ica_url)
+            run_cmd  = paste(run_cmd,"--base-ica-url",args$base_ica_url)
+            if(args$develop_mode){
+              run_cmd = paste(run_cmd,"--developer-mode")
+            }
             rlog::log_info(paste("Running",run_cmd))
             system(run_cmd)
           }
         } else{
-        rlog::low_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]])))
+        rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]])))
         }
       } else{
         xml_files = list.files(dirname(dsl2_nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
@@ -329,13 +358,17 @@ if(args$create_pipeline_in_ica){
           pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
             run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
+            run_cmd  = paste(run_cmd,"--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))
             run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
-            run_cmd  = paste(run_cmd,"--simple-mode","--base-ica-url",args$base_ica_url)
+            run_cmd  = paste(run_cmd,"--base-ica-url",args$base_ica_url)
+            if(args$develop_mode){
+              run_cmd = paste(run_cmd,"--developer-mode")
+            }
             rlog::log_info(paste("Running DSL2-enabled pipeline creation",run_cmd))
             system(run_cmd)
           } 
         } else{
-          rlog::low_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
+          rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
         }
       }
     }
