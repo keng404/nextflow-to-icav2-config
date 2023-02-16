@@ -337,7 +337,7 @@ if(args$create_pipeline_in_ica){
       if(length(xml_files)>0){
         pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
-            run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
+            run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",nextflow_scripts[[scripts_to_create[l]]],"--workflow-language nextflow")
             run_cmd  = paste(run_cmd,"--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))
             run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
             run_cmd  = paste(run_cmd,"--base-ica-url",args$base_ica_url)
@@ -357,7 +357,7 @@ if(args$create_pipeline_in_ica){
         if(length(xml_files)>0){
           pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
-            run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]]),"--workflow-language nextflow")
+            run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",dsl2_nextflow_scripts[[scripts_to_create[l]]],"--workflow-language nextflow")
             run_cmd  = paste(run_cmd,"--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))
             run_cmd  = paste(run_cmd,paste("--parameters-xml",xml_files[1],"--nf-core-mode --ica-project-name",ica_project_name,"--pipeline-name", pipeline_name,"--api-key-file", api_key_file))
             run_cmd  = paste(run_cmd,"--base-ica-url",args$base_ica_url)
