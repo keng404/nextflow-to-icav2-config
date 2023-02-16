@@ -39,7 +39,7 @@ Rscript nf-core.conversion_wrapper.R --input {PIPELINE_JSON_FILE} --staging_dire
 
 In summary, you will need the following prerequisites, either to run the wrapper referenced above or to carry out individual steps below.
 - 1) ```git clone``` nf-core pipelines of interest
-- 2) Install the python module ```nf-core`` and create a JSON file using the command line ``` nf-core list --json > {PIPELINE_JSON_FILE}```
+- 2) Install the python module ```nf-core``` and create a JSON file using the command line ```nf-core list --json > {PIPELINE_JSON_FILE}```
 
 ** For non nf-core pipelines, you can try to generate a parameters XML and modify the NF scripts of your pipeline by using the ```nf-core.ica_mod_nf_script.R ``` script. Just be sure to add the ```generate-xml``` flag to enable the creation of an XML file and ```--enable-dsl2``` flag to have the script appropriately handle Nextflow workflows implemented in DSL2.
 
