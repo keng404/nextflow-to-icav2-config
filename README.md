@@ -1,5 +1,5 @@
 # nextflow-to-icav2-config
-R-based helper scripts to generate XML files and modifications to NF scripts for ICAv2 compatiblity.
+R-based helper scripts to generate XML files and modifications to NF scripts/configuration files for ICAv2 compatiblity.
 This is an unofficial developer tool to help them develop Nextflow pipelines that will run successfully on ICA. There are some syntax bugs that may get introduced in your nextflow code. One suggestion is to run the steps as described below and then open up these files in VisualStudio Code with the nextflow plugin installed. You may also need to run smoke tests on your code to identify syntax errors you might not catch upon first glance. 
 
 ## local testing your nextflow pipeline after using these scripts
