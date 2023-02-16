@@ -18,17 +18,17 @@
 ## functional utilities
 - ```params_to_strip``` - loads ```params_to_strip.txt``` template and passes list to downstream function
 - ```params_to_inject``` - loads ```params_to_inject.txt``` template and passes list to downstream function
-- ```copy_modules_template``` - copy in ```template.modules.config``` file to pipeline dir as ```'conf/modules.config'```
+- ```copy_modules_template``` - copy in ```template.modules.config``` file to pipeline dir as ```'conf/base.config'```
 - ```override_module_config``` - override module configs for (cpus, memory,maxForks)
 
 ## downstream functional utilities
 - ```strip_params``` - consumes output of ```params_to_strip``` and ```read_params```, removes params defined in ```params_to_strip.txt```
 - ```inject_params``` - consumes output from ```strip_params``` and add params  defined in ```params_to_inject.txt```
-- ```add_module_reference``` - Add in reference to ```nextflow.config``` file ```includeConfig 'conf/modules.config' ```
+- ```add_module_reference``` - Add in reference to ```nextflow.config``` file ```includeConfig 'conf/base.config' ```
 
 ## writing utilities
 - ```write_params``` - consumes output of inject_params and writes new ```nextflow.config``` file
-- ```write_modules``` - consumes output of modules_to_list and write new ```modules.config``` file 
+- ```write_modules``` - consumes output of modules_to_list and write new ```base.config``` file 
 
 
 # scripts to update 
