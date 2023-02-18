@@ -13,7 +13,7 @@ parser <- ArgumentParser()
 
 parser$add_argument("-s", "--nextflow-script","--nextflow_script", default=NULL,
                     help="Main nf script for a pipeline")
-parser$add_argument("-x", "--nextflow-config","--nextflow_config", default=NULL,
+parser$add_argument("-y", "--nextflow-config","--nextflow_config", default=NULL,
                     help="Main nf config for a pipeline")
 parser$add_argument("-l", "--cwl-script","--cwl_script", default=NULL,
                      help="Main CWL  script for a pipeline")
@@ -181,7 +181,7 @@ if(is.null(ica_project_id) && is.null(ica_project_name)){
       rlog::log_info(paste("Found project id for ",ica_project_name,"project id is:",ica_project_id))
     }
   } else{
-    stop(paste("Please provide a valid project name [",ica_project_name,"]\nFound",paste(ica_project_lookup_table[,1],collapse=", ")))
+    stop(paste("Please provide a valid project name [",ica_project_name,"]\n"))
   }
   ica_pipeline_launch_cmd_global_flags = c(ica_pipeline_launch_cmd_global_flags,"--project-id",ica_project_id)
 }
