@@ -164,7 +164,7 @@ if(is.null(ica_project_id) && is.null(ica_project_name)){
   current_index = 1
   for(i in 1:length(ica_project_lookup$items)){
     project_name = ica_project_lookup$items[[i]]$name
-    lookup_query = project_name== ica_project_name || grepl(ica_project_name,project_name,ignore.case = T)
+    lookup_query = project_name== ica_project_name | grepl(ica_project_name,project_name,ignore.case = T)
     if(sum(lookup_query) >0){
       ica_project_lookup_table_subset[[current_index]] = ica_project_lookup$items[[i]]
       current_index = current_index +  1
@@ -352,29 +352,36 @@ if(args$developer_mode){
   library(rlog)
   dummy_xml = xml_file
   if(args$parameters_xml_override){
-    rlog::log_info(paste("UPDATING parameters XML file:",dummy_xml))
-    doc = xmlTreeParse(dummy_xml,useInternalNodes = TRUE)
+    parameter_xml_file = dummy_xml
+    data_inputs_to_add = c("input_files","project_dir")
+    
+    rlog::log_info(paste("UPDATING parameters XML file:",parameter_xml_file))
+    doc = xmlTreeParse(parameter_xml_file,useInternalNodes = TRUE)
     root = xmlRoot(doc)
     dataInputsNode = root[["dataInputs"]]
-    new_input_node_attributes = c(code = "project_dir",format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")  
+    data_input_names = xmlAttrs(root[["dataInputs"]][["dataInput"]])[["code"]]
+    tool_names = xmlAttrs(root[["steps"]][["step"]][["tool"]])[["code"]]
+    if("project_dir" %in% data_input_names){
+      new_input_node_attributes = c(code = "project_dir",format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")  
+      node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
+      newXMLNode("label", "project_dir", parent=node_object)
+      newXMLNode("description", "directory with additional files/input to run pipeline --- other files in your github project", parent=node_object)
+    }
+    if("input_files" %in% data_input_names){
+      new_input_node_attributes = c(code = "input_files",format = "UNKNOWN",type = "FILE",required = "true",multiValue = "true")  
+      node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
+      newXMLNode("label", "input_files", parent=node_object)
+      newXMLNode("description", "additional files/input to run pipeline --- other files in your github project", parent=node_object)
+    }
     
-    node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
-    newXMLNode("label", "project_dir", parent=node_object)
-    newXMLNode("description", "directory with additional files/input to run pipeline --- other files in your github project", parent=node_object)
-    
-    new_input_node_attributes = c(code = "input_files",format = "UNKNOWN",type = "FILE",required = "true",multiValue = "true")  
-    
-    node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
-    newXMLNode("label", "input_files", parent=node_object)
-    newXMLNode("description", "additional files/input to run pipeline --- other files in your github project", parent=node_object)
-    
-    outputPath = gsub(".xml$",".updated.xml",dummy_xml)
+    outputPath = gsub(".xml$",".updated.xml",parameter_xml_file)
     rlog::log_info(paste("Updating parameters XML here:",outputPath))
     #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
     prefix.xml <- "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
     saveXML(doc , file=outputPath,encoding="utf-8")
     xml_file = outputPath
-    rlog::log_info(paste("Resetting parameters XML to:",outputPath))
+    system(paste("mv",outputPath,parameter_xml_file))
+    rlog::log_info(paste("Updating parameters XML to:",parameter_xml_file))
   }
   pipeline_creation_request[["parametersXmlFile"]] = xml_file
   #####################################################

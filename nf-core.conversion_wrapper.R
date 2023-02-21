@@ -19,6 +19,8 @@ parser$add_argument("-d", "--dsl2-check","--dsl2_check", action="store_true",def
                     help="run_script directory for this pipeline")
 parser$add_argument("-v", "--develop-mode","--develop_mode", action="store_true",default=FALSE,
                     help="develop a pipeline to run on ICA")
+parser$add_argument("-u", "--update-xml","--update_xml", action="store_true",default=FALSE,
+                    help="pre-flight update of XML file before creating the pipeline in ICA")
 parser$add_argument("-x","--generate-xml","--generate_xml", default=FALSE
                     ,action="store_true", help = " auto-generate parameters XML file output -- independent from a nextflow_schema.json")
 parser$add_argument("-c", "--create-pipeline-in-ica","--create_pipeline_in_ica", action="store_true",default=FALSE,
@@ -389,6 +391,9 @@ if(args$create_pipeline_in_ica){
             if(args$develop_mode){
               run_cmd = paste(run_cmd,"--developer-mode")
             }
+            if(args$update_xml){
+              run_cmd = paste(run_cmd,"--parameters-xml-override")
+            }
             rlog::log_info(paste("Running",run_cmd))
             system(run_cmd)
           }
@@ -408,6 +413,9 @@ if(args$create_pipeline_in_ica){
             run_cmd  = paste(run_cmd,"--base-ica-url",args$base_ica_url)
             if(args$develop_mode){
               run_cmd = paste(run_cmd,"--developer-mode")
+            }
+            if(args$update_xml){
+              run_cmd = paste(run_cmd,"--parameters-xml-override")
             }
             rlog::log_info(paste("Running DSL2-enabled pipeline creation",run_cmd))
             system(run_cmd)
