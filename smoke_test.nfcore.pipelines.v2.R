@@ -160,6 +160,8 @@ if('vken' %in% names(x)){
   new_name = name_split[length(name_split) - 2]
   x[[new_name]] = x[['vken']]
 }
+print(x)
+stop()
 
 path_or_dir <- function(path_of_interest){
   if(grepl(".tsv$",path_of_interest) || grepl(".csv$",path_of_interest)){

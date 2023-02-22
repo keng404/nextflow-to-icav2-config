@@ -361,13 +361,13 @@ if(args$developer_mode){
     dataInputsNode = root[["dataInputs"]]
     data_input_names = xmlAttrs(root[["dataInputs"]][["dataInput"]])[["code"]]
     tool_names = xmlAttrs(root[["steps"]][["step"]][["tool"]])[["code"]]
-    if("project_dir" %in% data_input_names){
+    if(!"project_dir" %in% data_input_names){
       new_input_node_attributes = c(code = "project_dir",format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")  
       node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
       newXMLNode("label", "project_dir", parent=node_object)
       newXMLNode("description", "directory with additional files/input to run pipeline --- other files in your github project", parent=node_object)
     }
-    if("input_files" %in% data_input_names){
+    if(!"input_files" %in% data_input_names){
       new_input_node_attributes = c(code = "input_files",format = "UNKNOWN",type = "FILE",required = "true",multiValue = "true")  
       node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
       newXMLNode("label", "input_files", parent=node_object)
@@ -379,9 +379,10 @@ if(args$developer_mode){
     #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
     prefix.xml <- "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
     saveXML(doc , file=outputPath,encoding="utf-8")
-    xml_file = outputPath
+    #xml_file = outputPath
     system(paste("mv",outputPath,parameter_xml_file))
     rlog::log_info(paste("Updating parameters XML to:",parameter_xml_file))
+    xml_file = parameter_xml_file
   }
   pipeline_creation_request[["parametersXmlFile"]] = xml_file
   #####################################################
