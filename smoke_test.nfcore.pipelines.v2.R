@@ -282,8 +282,8 @@ getDatas <- function(cmd_str_split,token,data_type,ica_auth_list){
         if(token ==  "input_files:FILE" & file_extension %in% file_extensions_keep){
           dataz = c(dataz,data_table$items[[j]]$id)
         } else{
-          rlog::log_info(paste("Not adding the file",file_path,"to the command line"))
-#          dataz = c(dataz,data_table$items[[j]]$id)
+          rlog::log_info(paste("Adding the file",file_path,"to the command line"))
+          dataz = c(dataz,data_table$items[[j]]$id)
         }
       } else{
         if(j == 1){
