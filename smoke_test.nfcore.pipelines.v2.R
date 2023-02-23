@@ -160,8 +160,8 @@ if('vken' %in% names(x)){
   new_name = name_split[length(name_split) - 2]
   x[[new_name]] = x[['vken']]
 }
+rlog::log_info(paste("Found these ICA pipelines"))
 print(x)
-stop()
 
 path_or_dir <- function(path_of_interest){
   if(grepl(".tsv$",path_of_interest) || grepl(".csv$",path_of_interest)){
@@ -709,6 +709,27 @@ parseCommandString <- function(cmd_str,ica_auth_list,demo_data_manifest){
     return(NULL)
   }
 }
+#############
+remove_generics_from_stub <- function(cli_stub){
+  idxs_to_remove = c()
+  args_to_strip = c("DIRECTORY","FILE","null")
+  cli_stub_split = strsplit(cli_stub,"\\s+")[[1]]
+  for(i in 1:length(cli_stub_split)){
+    remove_or_not = apply(t(args_to_strip),2, function(x) grepl(x,cli_stub_split[i]))
+    if(sum(remove_or_not) > 0 ){
+      idxs_to_remove = c(idxs_to_remove,i-1)
+      idxs_to_remove = c(idxs_to_remove,i)
+    }
+  }
+  if(length(idxs_to_remove) > 0){
+    idxs_to_keep = !1:length(cli_stub_split) %in%  idxs_to_remove
+    updated_stub = paste(cli_stub_split[idxs_to_keep],sep = " ",collapse = " ")
+    rlog::log_info(paste("Generics stripped from stub:",cli_stub))
+    return(updated_stub)
+  } else{
+    return(cli_stub)
+  }
+}
 # split command .... fill in null, FILE.DIRECTORY
 # project directories will contain all directories within projectDir
 # input_files will contain all json files within projectDir
@@ -722,8 +743,9 @@ for(idx in 1:length(template_cmds)){
   revised_command_string = splitCommandString(template_cmds[idx])
   rlog::log_info(paste("REVISED TEMPLATE:",revised_command_string))
   final_command = parseCommandString(revised_command_string,ica_auth_list,demo_data_manifest)
-  launch_cmds = c(launch_cmds,final_command)
   if(!is.null(final_command)){
+    final_command1 = remove_generics_from_stub(final_command)
+    final_command = final_command1
     rlog::log_info(paste("FINAL COMMAND:",final_command))
     launch_cmds = c(launch_cmds,final_command)
   } else{
@@ -731,4 +753,5 @@ for(idx in 1:length(template_cmds)){
   }
 }
 rlog::log_info(paste("WRITING out commands to:",output_launch_script))
+launch_cmds = unique(launch_cmds)
 write.table(launch_cmds,file=output_launch_script,sep="\n",quote=F,col.names = F,row.names = F)
