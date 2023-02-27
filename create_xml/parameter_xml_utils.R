@@ -15,6 +15,9 @@ getParametersFromXML <- function(xml_doc){
       parameter_default_value = xml_subset[i][["parameter"]][["value"]]
       parameter_description = xml_subset[i][["parameter"]][["description"]]
       parameter_list[[parameter_name]][["default"]] = parameter_default_value
+      if((is.null(parameter_default_value) | parameter_default_value == "null") & parameter_type == "optionsType"){
+        parameter_list[[parameter_name]][["default"]] = xml_subset[i][["parameter"]][[parameter_type]][["option"]][1]
+      }
       parameter_list[[parameter_name]][["description"]] = parameter_description
       parameter_list[[parameter_name]][["parameter_type"]] = parameter_type
     }

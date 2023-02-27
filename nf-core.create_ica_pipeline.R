@@ -94,7 +94,7 @@ if(!is.null(additional_files)){
   file_list  = list.files(additional_files,full.names = T,recursive=T)
   file_list = file_list[file_list != main_script && file_list != xml_file]
   if(length(file_list) > 0) {
-    file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl(".config$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
+    file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl("tmp$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
   }
   dir_list = sort(unique(apply(t(file_list),2, function(x) dirname(x))))
 ### folders
@@ -501,7 +501,7 @@ if(!is.null(final_nextflow_version)){
 ###### ATTEMPT ____ MANUALLY CREATE ACTUAL CURL COMMAND TO ICA API rest server to  create pipeline
 create_curl_command <- function(url,request){
   curl_command = paste("curl --verbose -vL -X 'POST'",url)
-  files_sections = c("otherNextflowFiles","toolCwlFiles","mainNextflowFile","parametersXmlFile","workflowCwlFile")
+  files_sections = c("otherNextflowFiles","toolCwlFiles","nextflowConfigFile","mainNextflowFile","parametersXmlFile","workflowCwlFile")
   #adding headers
   curl_command = paste(curl_command,"-H 'accept: application/vnd.illumina.v3+json'")
   curl_command = paste(curl_command,"-H 'X-API-Key:",paste(api_key,"'",sep=""))
@@ -530,7 +530,10 @@ create_curl_command <- function(url,request){
             curl_command = paste(curl_command,string_to_add)
           }
         }
-      } else if(names(request)[i] == "parametersXmlFile"){
+      } else if(names(request)[i] == "nextflowConfigFile"){
+        string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],"'",sep=""))
+        curl_command = paste(curl_command,string_to_add)
+        } else if(names(request)[i] == "parametersXmlFile"){
         string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],";type=text/xml'",sep=""))
         curl_command = paste(curl_command,string_to_add)
       } else if(names(request)[i] == "mainNextflowFile" || names(request)[i] == "workflowCwlFile"){
