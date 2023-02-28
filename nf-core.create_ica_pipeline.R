@@ -94,7 +94,7 @@ if(!is.null(additional_files)){
   file_list  = list.files(additional_files,full.names = T,recursive=T)
   file_list = file_list[file_list != main_script && file_list != xml_file]
   if(length(file_list) > 0) {
-    file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl("tmp$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
+    file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl(".tmp$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
   }
   dir_list = sort(unique(apply(t(file_list),2, function(x) dirname(x))))
 ### folders
@@ -109,7 +109,7 @@ if(!is.null(additional_files)){
     file_list  = list.files(dirname(main_script),full.names = T,recursive=T)
     file_list = file_list[file_list != main_script & file_list != xml_file]
     if(length(file_list) > 0) {
-      file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl(".config$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
+      file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl(".tmp$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
     }
     dir_list = sort(unique(apply(t(file_list),2, function(x) dirname(x))))
     dir_list = dir_list[!apply(t(dir_list),2,function(x) x == file.path(dirname(main_script),"docs"))]
@@ -346,7 +346,7 @@ if(args$developer_mode){
   file_list  = list.files(dirname(main_script),full.names = T,recursive=T)
   file_list = file_list[file_list != main_script & file_list != xml_file]
   if(length(file_list) > 0) {
-    file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl(".config$",x)) & !apply(t(file_list),2,function(x) grepl(".pipeline.xml$",x))]
+    file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) &  !apply(t(file_list),2,function(x) grepl(".tmp$",x)) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl(".pipeline.xml$",x))]
   }
   library(XML)
   library(rlog)
@@ -560,22 +560,28 @@ if(!args$debug){
   if(!"pipeline" %in% names(pipeline_creation_response)){
     rlog::log_warn(paste("Could not create pipeline for:",main_script))
     rlog::log_warn(paste("Retrying pipeline creation for:",main_script))
+    new_pipeline_name = pipeline_creation_request[["code"]]
     while(num_retries < max_retries){
       ## change the name of the pipeline
-      pipeline_creation_request[["code"]] = rename_pipeline_name(pipeline_name,api_key)
+      name_append = paste("",format(Sys.time(), "%d_%m_%y_%H_%M_%S"),sep = "_",collapse="_")
+      new_pipeline_name = paste(new_pipeline_name,name_append,sep = "")
+      pipeline_creation_request[["code"]] = new_pipeline_name
+      #pipeline_creation_request[["code"]] = rename_pipeline_name(pipeline_name,api_key)
       pipeline_creation_request[["description"]] = paste("See",paste("https://github.com/nf-core/",dirname(main_script),sep=""))
       curl_command = create_curl_command(pipeline_creation_url,pipeline_creation_request)
-      #rlog::log_info(paste("RUNNING:",curl_command))
+      rlog::log_info(paste("RUNNING:",curl_command))
       pipeline_creation_response = rjson::fromJSON(json_str=system(curl_command,intern=T))
       num_retries = num_retries + 1
+      if(!"pipeline" %in% names(pipeline_creation_response)){
+        rlog::log_error(paste("ERROR code from creating pipeline. Attempt #",num_retries,main_script))
+        print(pipeline_creation_response)
+      } else{
+        rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$pipeline$id))
+        num_retries = max_retries
+      }
     }
     #print(pipeline_creation_response_list)
-    if(!"pipeline" %in% names(pipeline_creation_response)){
-      rlog::log_error(paste("Could not create pipeline for",main_script))
-      print(pipeline_creation_response)
-    } else{
-      rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$pipeline$id))
-    }
+
   } else{
     rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$pipeline$id))
   }

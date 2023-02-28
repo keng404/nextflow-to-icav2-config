@@ -117,10 +117,10 @@ for(j in 1:length(names(nf_pipelines_metadata))){
   rlog::log_info(paste("Step1: git clone",nf_pipeline[["github_link"]]))
   system(clone_cmd)
   new_dir = paste(staging_directory,nf_pipeline[["name"]],sep="/")
-  #setwd(new_dir)
-  #rlog::log_info(paste("Step2: checking out tag",nf_pipeline[["release_branch"]]))
-  #checkout_cmd = paste("git checkout",paste(nf_pipeline[["release_branch"]]))
-  #system(checkout_cmd)
+  setwd(new_dir)
+  rlog::log_info(paste("Step2: checking out tag",nf_pipeline[["release_branch"]]))
+  checkout_cmd = paste("git checkout",paste(nf_pipeline[["release_branch"]]))
+  system(checkout_cmd)
 }
 ### generate parameter XML files for each pipeline in nf-core_pipelines metadata
 rlog::log_info(paste("Generate parameter XML files"))
