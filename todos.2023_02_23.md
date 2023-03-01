@@ -38,9 +38,9 @@ STEPS performed in this code:
 	- STEP 5 : create smoke tests for pipeline
 #############################################
 ### features to revise/code to add
-- Params to add
+- [ X ]  Params to add
 Change order params are added so that the params injected comes before params stripped
-- Module names with ‘*’ 
+-  [ X ] Module names with ‘*’ 
 ```R
 	if(grepl("\\*"),module_name){
 		module_name = paste("'",module_name,"'",sep="")
@@ -50,7 +50,8 @@ Change order params are added so that the params injected comes before params st
 	- TBD
 - Turn repo into R library 
 - Documentation update  -- SEE ABOVE
-- find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
+- [ ] find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
+- [ X ] find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 ``` R
 scripts_to_absolute_path = list()
 binary_dir = paste(dirname(main_script),"bin",sep="")
@@ -58,6 +59,7 @@ scripts_to_absolute_path[[binary_dir]] = list()
 assets_dir = paste(dirname(main_script),"assets",sep="")
 scripts_to_absolute_path[[assets_dir]] = list()
 if(dir.exists(binary_dir)){
+	setwd(dirname(main_script))
 	files_of_interest = file.list(binary_dir,recursive=T)
 	basename_files_of_interest = apply(t(files_of_interest),2,basename)
 	for(f in 1:length(files_of_interest)){
@@ -65,6 +67,7 @@ if(dir.exists(binary_dir)){
 	}
 }
 if(dir.exists(assets_dir)){
+	setwd(dirname(main_script))
 	files_of_interest = file.list(assets_dir,recursive=TRUE)
 	basename_files_of_interest = apply(t(files_of_interest),2,basename)
 	for(f in 1:length(files_of_interest)){
