@@ -38,21 +38,21 @@ STEPS performed in this code:
 	- STEP 5 : create smoke tests for pipeline
 #############################################
 ### features to revise/code to add
-- [X]  Params to add
+- [X] 1) Params to add to ```nextflow.config```
 Change order params are added so that the params injected comes before params stripped
--  [X] Module names with ‘*’ 
+- [X] 2) Module names with ‘*’ 
 ```R
 	if(grepl("\\*"),module_name){
 		module_name = paste("'",module_name,"'",sep="")
 	}
 ```
-- Bugs with smoke test (Might have figured these out)
+- 3) Bugs with smoke test (Might have figured these out)
 	- TBD
-- Turn repo into R library 
-- Documentation update  -- SEE ABOVE
-- [ ] find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
+- [ ] 4) Turn repo into R library 
+- [ ] 5) Documentation update  -- SEE ABOVE
+- [ ] 6) find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
 	- Usually has to do with genome/reference configuration. For example [this](https://github.com/keng404/ica_nextflow_demos/blob/master/rnaseq/nextflow.config#L130). I have code to identify and interpret these expresssions, but I need to consume and figure out a creative way to  add this to the XML.  	
-- [X] find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
+- [X] 7) find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 ``` R
 scripts_to_absolute_path = list()
 binary_dir = paste(dirname(main_script),"bin",sep="")
