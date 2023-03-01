@@ -51,6 +51,7 @@ Change order params are added so that the params injected comes before params st
 - Turn repo into R library 
 - Documentation update  -- SEE ABOVE
 - [ ] find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
+	- Usually has to do with genome/reference configuration. For example [this](https://github.com/keng404/ica_nextflow_demos/blob/master/rnaseq/nextflow.config#L130). I have code to identify and interpret these expresssions, but I need to consume and figure out a creative way to  add this to the XML.  	
 - [X] find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 ``` R
 scripts_to_absolute_path = list()
