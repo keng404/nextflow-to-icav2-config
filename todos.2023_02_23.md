@@ -23,7 +23,7 @@ nextflow pipeline of interest that you are developing or a pipeline that is nf-c
 	- what if you don't?
 - pipeline code (nextflow/CWL)
 - Configuration files
-	- how input is staged in ICA relative to ```workflow.launchDir``` and ```workflow.workDir``
+	- how input is staged in ICA relative to ```workflow.launchDir``` and ```workflow.workDir```
 	- troubleshooting runs + pulling it back into ICA
 - Create pipeline in ICA
 ### Advanced topics
