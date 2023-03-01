@@ -38,9 +38,9 @@ STEPS performed in this code:
 	- STEP 5 : create smoke tests for pipeline
 #############################################
 ### features to revise/code to add
-- [ X ]  Params to add
+- [X]  Params to add
 Change order params are added so that the params injected comes before params stripped
--  [ X ] Module names with ‘*’ 
+-  [X] Module names with ‘*’ 
 ```R
 	if(grepl("\\*"),module_name){
 		module_name = paste("'",module_name,"'",sep="")
@@ -51,7 +51,7 @@ Change order params are added so that the params injected comes before params st
 - Turn repo into R library 
 - Documentation update  -- SEE ABOVE
 - [ ] find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
-- [ X ] find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
+- [X] find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 ``` R
 scripts_to_absolute_path = list()
 binary_dir = paste(dirname(main_script),"bin",sep="")
