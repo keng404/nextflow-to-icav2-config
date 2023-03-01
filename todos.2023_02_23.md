@@ -23,7 +23,7 @@ nextflow pipeline of interest that you are developing or a pipeline that is nf-c
 	- what if you don't?
 - pipeline code (nextflow/CWL)
 - Configuration files
-	- how input is staged in ICA relative to workflow.launchDir workflow.workDir
+	- how input is staged in ICA relative to ```workflow.launchDir``` and ```workflow.workDir``
 	- troubleshooting runs + pulling it back into ICA
 - Create pipeline in ICA
 ### Advanced topics
@@ -32,7 +32,7 @@ nextflow pipeline of interest that you are developing or a pipeline that is nf-c
 
 STEPS performed in this code:
  - STEP 1 : modify existing configs or copy template configs
-	- STEP 2 : generate XML from ``nextflow_schema.json``` or generate XML from ```main.nf``` and config files
+	- STEP 2 : generate XML from ```nextflow_schema.json``` or generate XML from ```main.nf``` and config files
 	- STEP 3 : make final edits to XML and create pipeline in ICA
 	- STEP 4 : create CLI stub to launch pipeline
 	- STEP 5 : create smoke tests for pipeline
@@ -50,7 +50,7 @@ Change order params are added so that the params injected comes before params st
 	- TBD
 - Turn repo into R library 
 - Documentation update  -- SEE ABOVE
-- find paths to expand so that ICA can find them when running the pipeline
+- find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 ``` R
 scripts_to_absolute_path = list()
 binary_dir = paste(dirname(main_script),"bin",sep="")
