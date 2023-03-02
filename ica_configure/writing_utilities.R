@@ -163,6 +163,8 @@ getInstancePodAnnotation <- function(cpus,mem,container_name,ica_instance_table)
   pod_annotation = NULL
   pod_value = NA
   search_query = c()
+  mem = mem[!is.na(mem)]
+  cpus = cpus[!is.na(cpus)]
   if(length(mem) >0){
     mem = apply(t(mem),2,function(x) strtoi(stringr::str_extract(x,"[[0-9]]+")))
     if(is.numeric(mem)){
@@ -231,6 +233,8 @@ addMemOrCPUdeclarations <- function(pod_annotation,lookup_table){
   }
   return(declarations_to_add)
 }
+
+
 ### - ```override_module_config``` - override module configs for (cpus, memory)
 remove_duplicate_elements <- function(test_expression){
   revised_parameter_value = test_expression

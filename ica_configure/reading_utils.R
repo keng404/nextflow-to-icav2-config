@@ -159,6 +159,10 @@ get_other_lines_from_config <- function(conf_file){
       line_skip = TRUE
     } 
     #########
+    if(length(clean_line) == 0){
+      rlog::log_info(paste(c("SKIPPING_LINE:",clean_line),collapse = " ",sep = " "))
+      next
+    }
     for(t in 1:length(clean_line)){
       if(grepl("\\/\\*",clean_line[t])){
      ## if(grepl("/*",clean_line[t])){
@@ -196,6 +200,8 @@ get_other_lines_from_config <- function(conf_file){
     ### grab parameters in params enclosure
     if(!line_skip & out_params_closure & !in_params_closure & !in_comment_block){
       ##rlog::log_info(paste(line_skip,in_comment_block,in_params_closure,in_closure,out_closure,out_params_closure,initial_nested_param,nested_param_key))
+      lines_to_keep = c(lines_to_keep,conf_data[i,])
+    } else if(grepl("process",conf_data[i,]) & grepl("container",conf_data[i,])){
       lines_to_keep = c(lines_to_keep,conf_data[i,])
     }
   }
@@ -457,11 +463,20 @@ loadModuleMetadata <- function(config_files){
               }
               if(!"]" %in% clean_line){
                 value_collection = paste(clean_line[3:length(clean_line)])
+                add_closure = FALSE
+                if(grepl("\\{",value_collection) & grepl("\\}",value_collection)){
+                  if((grepl("\\(",value_collection) & grepl("\\)",value_collection)) | (grepl("\\$",value_collection))){
+                    add_closure = TRUE
+                  }
+                }
                 value_collection = gsub("\\{","",value_collection)
                 value_collection = gsub("\\}","",value_collection)
                 if(value_collection != "["){
                   if(parameter_name != "unknown"){
                     rlog::log_info(paste("Point1 : Found value for parameter:",parameter_name,"value:",value_collection))
+                    if(add_closure){
+                      value_collection = paste("{",value_collection,"}",collapse = " ")
+                    }
                     moduleMetadata[[parameter_name]] = value_collection
                     value_collection = c()
                   }
@@ -512,11 +527,19 @@ loadModuleMetadata <- function(config_files){
               # value_collection = c(value_collection,paste(clean_line[3:length(clean_line)],collapse=" "))
             } else{
               value_collection = paste(clean_line[3:length(clean_line)],collapse=" ")
+              if(grepl("\\{",value_collection) & grepl("\\}",value_collection)){
+                if((grepl("\\(",value_collection) & grepl("\\)",value_collection)) | (grepl("\\$",value_collection))){
+                  add_closure = TRUE
+                }
+              }
               value_collection = gsub("\\{","",value_collection)
               value_collection = gsub("\\}","",value_collection)
               if(value_collection != "["){
                 if(parameter_name != "unknown"){
                   rlog::log_info(paste("Point1 : Found value for parameter:",parameter_name,"value:",value_collection))
+                  if(add_closure){
+                    value_collection = paste("{",value_collection,"}",collapse = " ")
+                  }
                   moduleMetadata[[parameter_name]] = value_collection
                   value_collection = c()
                 }

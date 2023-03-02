@@ -3,6 +3,7 @@ suppressPackageStartupMessages(library("argparse"))
 source('create_xml/parameter_xml_utils.R')
 library(rlog)
 library(rjson)
+library(jsonlite)
 library(stringr)
 library(httr)
 # create parser object
@@ -555,6 +556,10 @@ num_retries = 0
 max_retries = 4
 if(!args$debug){
   pipeline_creation_response = rjson::fromJSON(json_str=system(curl_command,intern=T))
+  pipeline_creation_response_json = paste(dirname(xml_file),"pipeline_creation.response.json",collapse="/",sep="/")
+  error_json = jsonlite::toJSON(pipeline_creation_response,pretty=TRUE)
+  rlog::log_info(paste("Writing response to ",pipeline_creation_response_json))
+  write(error_json,file=pipeline_creation_response_json)
   #pipeline_creation_response = httr::POST(pipeline_creation_url,config=httr::add_headers("X-API-Key"=api_key), httr::accept("application/vnd.illumina.v3+json"),httr::content_type("multipart/form-data"),body = pipeline_creation_request,encode="multipart", verbose())
   #pipeline_creation_response_list = str(content(pipeline_creation_response, "parsed"))
   if(!"pipeline" %in% names(pipeline_creation_response)){
@@ -574,7 +579,11 @@ if(!args$debug){
       num_retries = num_retries + 1
       if(!"pipeline" %in% names(pipeline_creation_response)){
         rlog::log_error(paste("ERROR code from creating pipeline. Attempt #",num_retries,main_script))
-        print(pipeline_creation_response)
+        #print(pipeline_creation_response)
+        error_json = jsonlite::toJSON(pipeline_creation_response,pretty=TRUE)
+        pipeline_creation_response_json = paste(dirname(xml_file),"pipeline_creation.response_error.json",collapse="/",sep="/")
+        rlog::log_error(paste("OUTPUT error to:",pipeline_creation_response_json))
+        write(error_json,file=pipeline_creation_response_json)        
       } else{
         rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$pipeline$id))
         num_retries = max_retries

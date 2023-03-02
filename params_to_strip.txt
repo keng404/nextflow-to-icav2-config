@@ -16,6 +16,8 @@ report.enabled
 report.file
 dag.enabled
 dag.file
-params.outdir 
+params.outdir
 docker.enabled
+params.enable_conda
 params.publish_dir_mode
+params.igenomes_ignore

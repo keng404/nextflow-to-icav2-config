@@ -9,7 +9,7 @@ parser <- ArgumentParser()
 # specify our desired options 
 # by default ArgumentParser will add an help option 
 
-parser$add_argument("-i", "--input", default = NULL, required = TRUE,
+parser$add_argument("-i", "--input", default = NULL, required = FALSE,
                     help="input nf-core pipeline JSON")
 parser$add_argument("-s","--staging-directory", "--staging_directory", default=NULL, 
                     required = TRUE, help="staging_directory to stage nf-core pipelines")
@@ -85,42 +85,84 @@ if(args$create_pipeline_in_ica){
   api_key_file = args$api_key_file
   ica_project_name = args$ica_project_name
 }
-pipeline_metadata = rjson::fromJSON(file=input_json)
-
-### grab metadata for NF pipelines
-number_of_pipelines = length(pipeline_metadata$remote_workflows)
-nf_pipelines_metadata = list()
-for(i in 1:number_of_pipelines){
-  if(length(pipeline_metadata$remote_workflows[[i]][["releases"]]) > 0 ){
-    pipeline_name = pipeline_metadata$remote_workflows[[i]][["name"]]
-    pipeline_github_link = pipeline_metadata$remote_workflows[[i]][["full_name"]]
-    pipeline_branch = pipeline_metadata$remote_workflows[[i]][["releases"]][[1]]$tag_name
-    pipeline_description =  pipeline_metadata$remote_workflows[[i]][["description"]]
-    pipeline_tags  =  pipeline_metadata$remote_workflows[[i]][["topics"]]
-    nf_pipeline_metadata = list()
-    nf_pipeline_metadata[["name"]] = pipeline_name
-    nf_pipeline_metadata[["github_link"]] = pipeline_github_link
-    nf_pipeline_metadata[["release_branch"]] = pipeline_branch
-    nf_pipeline_metadata[["description"]] = pipeline_description
-    nf_pipeline_metadata[["tags"]] = pipeline_tags
-    nf_pipelines_metadata[[pipeline_name]] = nf_pipeline_metadata
+if(!is.null(input_json)){
+  pipeline_metadata = rjson::fromJSON(file=input_json)
+  
+  ### grab metadata for NF pipelines
+  number_of_pipelines = length(pipeline_metadata$remote_workflows)
+  nf_pipelines_metadata = list()
+  for(i in 1:number_of_pipelines){
+    pipeline_releases = pipeline_metadata$remote_workflows[[i]][["releases"]]
+    if(length(pipeline_metadata$remote_workflows[[i]][["releases"]]) > 0 ){
+      pipeline_name = pipeline_metadata$remote_workflows[[i]][["name"]]
+      pipeline_github_link = pipeline_metadata$remote_workflows[[i]][["full_name"]]
+      pipeline_branch = pipeline_metadata$remote_workflows[[i]][["releases"]][[length(pipeline_releases)]]$tag_name
+      pipeline_description =  pipeline_metadata$remote_workflows[[i]][["description"]]
+      pipeline_tags  =  pipeline_metadata$remote_workflows[[i]][["topics"]]
+      nf_pipeline_metadata = list()
+      nf_pipeline_metadata[["name"]] = pipeline_name
+      nf_pipeline_metadata[["github_link"]] = pipeline_github_link
+      nf_pipeline_metadata[["release_branch"]] = pipeline_branch
+      nf_pipeline_metadata[["description"]] = pipeline_description
+      nf_pipeline_metadata[["tags"]] = pipeline_tags
+      nf_pipelines_metadata[[pipeline_name]] = nf_pipeline_metadata
+    }
   }
-}
-
-### pull code from github
-library(rlog)
-rlog::log_info(paste("GRABBING nf-core pipelines from GitHub"))
-for(j in 1:length(names(nf_pipelines_metadata))){
-  nf_pipeline = nf_pipelines_metadata[[names(nf_pipelines_metadata)[j]]]
-  setwd(staging_directory)
-  clone_cmd = paste("git clone",paste("https://github.com/",nf_pipeline[["github_link"]],".git",sep=""))
-  rlog::log_info(paste("Step1: git clone",nf_pipeline[["github_link"]]))
-  system(clone_cmd)
-  new_dir = paste(staging_directory,nf_pipeline[["name"]],sep="/")
-  setwd(new_dir)
-  rlog::log_info(paste("Step2: checking out tag",nf_pipeline[["release_branch"]]))
-  checkout_cmd = paste("git checkout",paste(nf_pipeline[["release_branch"]]))
-  system(checkout_cmd)
+  
+  ### pull code from github
+  rlog::log_info(paste("GRABBING nf-core pipelines from GitHub"))
+  for(j in 1:length(names(nf_pipelines_metadata))){
+    nf_pipeline = nf_pipelines_metadata[[names(nf_pipelines_metadata)[j]]]
+    setwd(staging_directory)
+    clone_cmd = paste("git clone",paste("https://github.com/",nf_pipeline[["github_link"]],".git",sep=""))
+    rlog::log_info(paste("Step1: git clone",nf_pipeline[["github_link"]]))
+    system(clone_cmd)
+    new_dir = paste(staging_directory,nf_pipeline[["name"]],sep="/")
+    setwd(new_dir)
+    rlog::log_info(paste("Step2: checking out tag",nf_pipeline[["release_branch"]]))
+    checkout_cmd = paste("git checkout",paste(nf_pipeline[["release_branch"]]))
+    system(checkout_cmd)
+  }
+} else{
+  ###
+  if(length(git_repos) > 0){
+    rlog::log_info(paste("GRABBING nextflow pipelines from GitHub"))
+    for(j in 1:length(git_repos)){
+      git_repo_of_interest = git_repos[j]
+      tagname_split = strsplit(basename(dirname(git_repo_of_interest)),"\\:")[[1]]
+      git_branches_to_try = NULL
+      if(length(tagname_split) > 1){
+        git_branches_to_try = tagname_split[2]
+        pipeline_name = tagname_split[1]
+        git_repo_base_url = paste(dirname(git_repo_of_interest),pipeline_name,"",sep="/")
+      } else{
+        pipeline_name = tagname_split[1]
+        git_repo_base_url = paste(dirname(git_repo_of_interest),pipeline_name,"",sep="/")
+      }
+      setwd(staging_directory)
+      clone_cmd = paste("git clone",paste(git_repo_base_url,".git",sep=""))
+      rlog::log_info(paste("Step1: git clone",pipeline_name))
+      system(clone_cmd)
+      new_dir = paste(staging_directory,pipeline_name,sep="/")
+      setwd(new_dir)
+      if(!is.null(git_branches_to_try)){
+        rlog::log_info(paste("Step2: checking out tag",git_branches_to_try))
+        checkout_cmd = paste("git checkout",paste(git_branches_to_try))
+        system(checkout_cmd)
+      }
+    }
+  } else if(length(pipeline_dirs) >0){
+    rlog::log_info(paste("CONVERTING  pipelines from local sources"))
+    for(j in 1:length(pipeline_dirs)){
+      pipeline_dir_of_interest = pipeline_dirs[j]
+      setwd(staging_directory)
+      copy_cmd = paste("cp -r",pipeline_dir_of_interest,"$PWD")
+      rlog::log_info(paste("Migrate directory to staging directory"))
+      system(copy_cmd)
+    }
+  } else{
+    stop(paste("Provide  nextflow repos to convert"))
+  }  
 }
 ### generate parameter XML files for each pipeline in nf-core_pipelines metadata
 rlog::log_info(paste("Generate parameter XML files"))
@@ -134,7 +176,7 @@ for(k in 1:length(schema_jsons)){
   }
   rlog::log_info(paste("Running",run_cmd))
   system(run_cmd)
-}
+} 
 ### generate updated NF files for each pipeline in nf-core_pipelines_metadata
 ### no dsl2 support currently
 dsl2_enabled = function(nf_script){

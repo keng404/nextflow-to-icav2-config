@@ -55,10 +55,16 @@ add_error_stub <- function(nf_file,stub_statements){
   temp_file = paste(nf_file,".tmp",sep="")
   rlog::log_info(paste("READING NF file :",nf_file))
   nf_file_lines = t(read.delim(nf_file,header=F,quote="",sep="\n"))
+  found_workflow_on_error_statement = FALSE
+  workflow_on_error_bool = unlist(apply(t(nf_file_lines),2,function(x) grepl("workflow.onError",x)))
+  if(sum(workflow_on_error_bool) == 0){
   updated_lines = c(nf_file_lines,stub_statements)
   rlog::log_info(paste("WRITING out updated NF file with error stub:",nf_file))
   write.table(x=updated_lines,file=temp_file,sep="\n",quote=F,row.names=F,col.names=F)
   system(paste("cp",temp_file,nf_file))
+  } else{
+    rlog::low_warn(paste("ADD stub statements manually",stub_statements,paste("IN_THE_FILE:",nf_file,sep=" "),sep="\n"))
+  }
 }
 if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
   error_stub_to_add = create_error_stub(error_stub=error_stub)
@@ -882,4 +888,84 @@ classifyParameters <- function(paramsToXML){
   }
   rlog::log_info(paste("STEP4: Generating parameters XML to",outputPath))
   saveXML(doc, file=outputPath,encoding="utf-8")
+}
+
+#### modify module files to get absolute path
+scripts_to_absolute_path = list()
+binary_dir = paste(dirname(main_script),"bin",sep="")
+scripts_to_absolute_path[[binary_dir]] = list()
+assets_dir = paste(dirname(main_script),"assets",sep="")
+scripts_to_absolute_path[[assets_dir]] = list()
+if(dir.exists(binary_dir)){
+  setwd(dirname(main_script))
+  files_of_interest = file.list(binary_dir,recursive=TRUE)
+  setwd(dirname(main_script))
+  basename_files_of_interest = apply(t(files_of_interest),2,basename)
+  for(f in 1:length(files_of_interest)){
+    scripts_to_absolute_path[[files_of_interest[f]]] = paste("bin/",basename_files_of_interest[f],sep="")
+  }
+}
+if(dir.exists(assets_dir)){
+  setwd(dirname(main_script))
+  files_of_interest = file.list(assets_dir,recursive=TRUE)
+  basename_files_of_interest = apply(t(files_of_interest),2,basename)
+  for(f in 1:length(files_of_interest)){
+    scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
+  }
+}
+
+## function to update module based on these conditions
+absolute_path_update_module <- function(module_file){
+  module_file_data = read.delim(module_file,quote="",header=F)
+  module_file_data = t(module_file_data)
+  updated_lines = module_file_data
+  paths_of_interest = names(scripts_to_absolute_path)
+  found_updates = FALSE
+  for(idx in 1:length(module_file_data)){
+    found_update = FALSE
+    module_line = module_file_data[idx]
+    module_line_split = strsplit(module_line,"\\s+")[[1]]
+    for(poi in 1:length(paths_of_interest)){
+      relative_path_lookup = paths_of_interest[poi]
+      basename_path_lookup = scripts_to_absolute_path[[paths_of_interest[poi]]]
+      if(basename(relative_path_lookup) %in% module_line_split){
+        replacement_value = paste("'$baseDir/",relative_path_lookup,"'",sep="")
+        found_update = TRUE
+        found_updates = TRUE
+        if(!grepl("baseDir",module_line_split[module_line_split %in% relative_path_lookup] )){
+          module_line_split[module_line_split %in% relative_path_lookup] = replacement_value
+        }
+      } else if(basename(basename_path_lookup) %in% module_line_split){
+        replacement_value = paste("'$baseDir/",relative_path_lookup,"'",sep="")
+        found_update = TRUE
+        found_updates = TRUE
+        if(!grepl("baseDir",module_line_split[module_line_split %in% basename_path_lookup] )){
+          module_line_split[module_line_split %in% basename_path_lookup] = replacement_value
+        }
+      }
+    }
+    if(update_found){
+      new_line = paste(module_line_split,collapse = " ",sep = " ")
+      rlog::log_info(paste("UPDATING PATH in this line:",new_line))
+      updated_lines[idx] = new_line
+    } 
+  }
+  if(found_updates){
+    output_file = paste(module_file,".tmp",sep="")
+    write.table(update_lines,output_file,header=F,quote="")
+    rlog::log_info(paste("UPDATING:",module_file))
+    system(paste("mv",output_file,module_file))
+  } else{
+    rlog::log_info(paste("No updates required for:",module_file))
+  }
+}
+
+#### apply function above to all nextflow module files
+module_dir = paste(dirname(main_script),"modules",sep="") ### make this configurable at runtime for one-off executions
+module_files = file.list(module_dir,full.names=TRUE,recursive=TRUE)
+if(length(module_files) > 0 ){
+  for( m in 1:length(module_files)){
+    rlog::log_info(paste("SCANNING for path updates in:",module_files[m]))
+    absolute_path_update_module(module_file = module_files[m])
+  }
 }

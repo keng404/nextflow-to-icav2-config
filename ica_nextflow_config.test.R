@@ -68,8 +68,8 @@ if(is_simple_config | is.null(base_config_files)){
   if(length(config_lines) < 1){
     config_lines = NULL
   }
-  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_override_template)
-  config_params = inject_params(params_list = config_params_updated, params_to_inject=configs_to_hardcode)
+  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_to_strip(params_override_template))
+  config_params = inject_params(params_list = config_params_updated, params_to_inject=params_to_override(configs_to_hardcode))
   # generate ICA nextflow config file
   write_params(params_list = config_params,additional_lines = config_lines,output_file=paste(dirname(config_file),ica_config,sep="/"))
   # copy ICA module template
@@ -86,8 +86,8 @@ if(is_simple_config | is.null(base_config_files)){
   if(length(config_lines) < 1){
     config_lines = NULL
   }
-  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_override_template)
-  config_params = inject_params(params_list = config_params_updated, params_to_inject=configs_to_hardcode)
+  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_to_strip(params_override_template))
+  config_params = inject_params(params_list = config_params_updated, params_to_inject=params_to_inject(configs_to_hardcode))
   # generate ICA nextflow config file
   write_params(params_list = config_params,additional_lines = config_lines,output_file=paste(dirname(config_file),ica_config,sep="/"))
   # add reference to your module config file
