@@ -28,16 +28,10 @@ RUN apt-get update -y && \
     apt-get install -y openjdk-11-jdk
 RUN cd /usr/local/bin && \
     curl -s https://get.nextflow.io | bash
-# Install Python
-ENV PYTHON_VERSION "3.9.0"
-RUN cd /usr/src; wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz; \
-    tar -zxvf Python-${PYTHON_VERSION}.tgz; rm Python-${PYTHON_VERSION}.tgz; \
-    cd Python-${PYTHON_VERSION}; \
-    ./configure --enable-optimizations; \
-    make altinstall;
-RUN cd /usr/local/bin; \
-    mv python3.9 python;
+##############################################
 ENV NFCORE_TOOLS_VERSION "2.7.2"
+###### install nf-core in a virtual env and generate pipeline.JSON file to be used by scripts later.
+##################################
 RUN wget --no-check-certificate "https://github.com/nf-core/tools/archive/refs/tags/${NFCORE_TOOLS_VERSION}.zip" && \
     unzip ${NFCORE_TOOLS_VERSION}.zip && \
     cd tools-${NFCORE_TOOLS_VERSION} && \

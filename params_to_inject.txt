@@ -1,5 +1,6 @@
 docker.enabled = true
-params.outdir = "out"
-params.publish_dir_mode = "copy"
+params.outdir = 'out'
+params.publish_dir_mode = 'copy'
 params.conda_enabled = false
-params.igenomes_ignore = true
+params.igenomes_ignore = false
+params.enable_conda = false

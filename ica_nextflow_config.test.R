@@ -83,13 +83,24 @@ if(is_simple_config | is.null(base_config_files)){
   # parse config file
   config_params = get_params_from_config(conf_file=config_file)
   config_lines = get_other_lines_from_config(conf_file=config_file)
-  if(length(config_lines) < 1){
-    config_lines = NULL
+  
+  if(length(config_lines[["lines_to_keep"]]) < 1){
+    config_lines[["lines_to_keep"]] = NULL
+  }
+  if(length(config_lines[["lines_to_migrate"]]) < 1){
+    config_lines[["lines_to_migrate"]] = NULL
+  }
+  second_pass_lines = second_pass_config_other_lines(config_lines[["lines_to_keep"]])
+  if(length(second_pass_lines[["lines_to_keep"]]) < 1){
+    second_pass_lines[["lines_to_keep"]] = NULL
+  }
+  if(length(second_pass_lines[["lines_to_migrate"]]) < 1){
+    second_pass_lines[["lines_to_migrate"]] = NULL
   }
   config_params_updated = strip_params(params_list = config_params,params_to_strip=params_to_strip(params_override_template))
   config_params = inject_params(params_list = config_params_updated, params_to_inject=params_to_inject(configs_to_hardcode))
   # generate ICA nextflow config file
-  write_params(params_list = config_params,additional_lines = config_lines,output_file=paste(dirname(config_file),ica_config,sep="/"))
+  write_params(params_list = config_params,additional_lines = second_pass_lines[["lines_to_keep"]],output_file=paste(dirname(config_file),ica_config,sep="/"))
   # add reference to your module config file
   for(i in 1:length(base_config_files)){
     base_config_file = base_config_files[i]
@@ -102,7 +113,7 @@ if(is_simple_config | is.null(base_config_files)){
     # parse modules file
     base_configuration = loadModuleMetadata(c(base_config_file))
     updated_base_configuration = override_module_config(module_list = base_configuration,ica_instance_table = ica_instance_table)
-    write_modules(modules_list = updated_base_configuration,output_file=paste(dirname(config_file),base_config_relative_path,sep="/"),template_file=base_config_template)
+    write_modules(modules_list = updated_base_configuration,output_file=paste(dirname(config_file),base_config_relative_path,sep="/"),template_file=base_config_template,additional_lines = second_pass_lines[["lines_to_migrate"]])
     add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=base_config_file_path,additional_config=base_config_relative_path)
     
   }

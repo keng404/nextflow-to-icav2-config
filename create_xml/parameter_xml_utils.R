@@ -12,11 +12,21 @@ getParametersFromXML <- function(xml_doc){
         parameter_type = "string"
       }
       parameter_name = xml_subset[i][["parameter"]][[".attrs"]][["code"]]
-      parameter_default_value = xml_subset[i][["parameter"]][["value"]]
+      parameter_default_value = NULL
+      if("value" %in% names(xml_subset[i][["parameter"]])){
+        parameter_default_value = xml_subset[i][["parameter"]][["value"]]
+      } else{
+        parameter_default_value = NULL
+      }
+      rlog::log_info(paste("parameter_name:",parameter_name,"parameter_default_value:",parameter_default_value))
       parameter_description = xml_subset[i][["parameter"]][["description"]]
       parameter_list[[parameter_name]][["default"]] = parameter_default_value
-      if((is.null(parameter_default_value) | parameter_default_value == "null") & parameter_type == "optionsType"){
+      if(is.null(parameter_default_value)  & parameter_type == "optionsType"){
         parameter_list[[parameter_name]][["default"]] = xml_subset[i][["parameter"]][[parameter_type]][["option"]][1]
+      } else if( parameter_default_value == "null"  & parameter_type == "optionsType" ){
+        parameter_list[[parameter_name]][["default"]] = xml_subset[i][["parameter"]][[parameter_type]][["option"]][1]
+      } else{
+        rlog::log_info(paste("USING default value:",parameter_default_value))
       }
       parameter_list[[parameter_name]][["description"]] = parameter_description
       parameter_list[[parameter_name]][["parameter_type"]] = parameter_type

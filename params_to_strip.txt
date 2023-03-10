@@ -18,6 +18,8 @@ dag.enabled
 dag.file
 params.outdir
 docker.enabled
-params.enable_conda
+params.conda_enabled
 params.publish_dir_mode
 params.igenomes_ignore
+params.enable_conda
+params.tracedir

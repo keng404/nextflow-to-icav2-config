@@ -2,8 +2,10 @@ options(stringsAsFactors=FALSE)
 suppressPackageStartupMessages(library("argparse"))
 library(rlog)
 library(stringr)
-get_params_from_config <- function(conf_file){
-  conf_data = read.delim(conf_file,quote="",header=F)
+get_params_from_config <- function(conf_file,conf_data = NULL){
+  if(is.null(conf_data)){
+    conf_data = read.delim(conf_file,quote="",header=F)
+  }
   ## identify lines referring to params defined in config file
   lines_to_keep = c()
   line_skip = FALSE
@@ -26,7 +28,7 @@ get_params_from_config <- function(conf_file){
     if(grepl("/",clean_line[1])){
       line_skip = TRUE
     } 
-    if(!line_skip && grepl("\\{",conf_data[i,]) && grepl("params",conf_data[i,]) && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
+    if(!line_skip && grepl("\\{",conf_data[i,]) && "params" %in% clean_line && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
       rlog::log_info(paste("ENTERING_PARAMS_ENCLOSURE:",conf_data[i,]))
       in_params_closure = TRUE
     } else if(!line_skip && grepl("\\{",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && !grepl("params",conf_data[i,])){
@@ -134,8 +136,15 @@ get_params_from_config <- function(conf_file){
 
 get_other_lines_from_config <- function(conf_file){
   conf_data = read.delim(conf_file,quote="",header=F)
+  config_parsed_lines = list()
+  statement_prefixes  = c('if','when','def','else','else if','profiles')
+  
   ## identify lines referring to params defined in config file
   lines_to_keep = c()
+  lines_to_migrate = c()
+  statement_left_brackets = c()
+  statement_right_brackets = c()
+  in_expression = FALSE
   in_comment_block = FALSE
   line_skip = FALSE
   in_params_closure = FALSE
@@ -144,6 +153,11 @@ get_other_lines_from_config <- function(conf_file){
   out_params_closure = TRUE
   initial_nested_param = NA
   nested_param_key = NA
+  # 'manifest'
+  custom_params_to_ignore = c('report','timeline','trace','dag','env')
+  custom_params_to_ignore_closure = FALSE
+  custom_params_to_migrate = c('manifest')
+  in_manifest_closure = FALSE
   for(i in 1:nrow(conf_data)){
     line_split = strsplit(conf_data[i,],"\\s+")[[1]]
     clean_line = line_split
@@ -178,15 +192,29 @@ get_other_lines_from_config <- function(conf_file){
     } 
     ###rlog::log_info(paste(line_skip,in_comment_block,in_params_closure,in_closure,out_closure,out_params_closure,initial_nested_param,nested_param_key))
     ##############
-    if(!line_skip && grepl("\\{",conf_data[i,]) && grepl("params",conf_data[i,]) && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
+    if(!line_skip && grepl("\\{",conf_data[i,]) && "params" %in% clean_line && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
       rlog::log_info(paste("ENTERING_PARAMS_ENCLOSURE:",conf_data[i,]))
       in_params_closure = TRUE
     } else if(!line_skip && grepl("\\{",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && !grepl("params",conf_data[i,])){
       in_closure = TRUE
       out_closure = FALSE
+      #if((clean_line[1] %in% custom_params_to_ignore) & grepl("\\{",conf_data[i,])){
+      # custom_params_to_ignore_closure = TRUE
+      #} else if((clean_line[1] %in% custom_params_to_migrate) & grepl("\\{",conf_data[i,])){
+      # in_manifest_closure = TRUE
+      #} else{
+      #  custom_params_to_ignore_closure = TRUE
+      #}
     } else if(!line_skip && grepl("\\}",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) &&  !grepl("params",conf_data[i,]) && in_closure == TRUE){
       in_closure = FALSE
       out_closure = TRUE
+      #if(custom_params_to_ignore_closure & grepl("\\}",conf_data[i,])){
+      #  custom_params_to_ignore_closure = FALSE
+      #  next
+      #} else if(in_manifest_closure & grepl("\\}",conf_data[i,])){
+      #  in_manifest_closure = FALSE
+      #  next
+      #}
     } else if(!line_skip && in_params_closure && grepl("\\}",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && in_closure ==FALSE ){
       ### initial check each line to see if we've exited the params closure
       out_params_closure = TRUE
@@ -200,12 +228,167 @@ get_other_lines_from_config <- function(conf_file){
     ### grab parameters in params enclosure
     if(!line_skip & out_params_closure & !in_params_closure & !in_comment_block){
       ##rlog::log_info(paste(line_skip,in_comment_block,in_params_closure,in_closure,out_closure,out_params_closure,initial_nested_param,nested_param_key))
-      lines_to_keep = c(lines_to_keep,conf_data[i,])
+      if(!custom_params_to_ignore_closure & !in_manifest_closure){
+        lines_to_keep = c(lines_to_keep,conf_data[i,])
+      } else if(!custom_params_to_ignore_closure & in_manifest_closure){
+        lines_to_migrate = c(lines_to_migrate,conf_data[i,])
+      } else{
+        rlog::log_warn((paste("NOT KEEPING LINE:",conf_data[i,])))
+      }
     } else if(grepl("process",conf_data[i,]) & grepl("container",conf_data[i,])){
       lines_to_keep = c(lines_to_keep,conf_data[i,])
     }
   }
-  return(lines_to_keep)
+  config_parsed_lines[["lines_to_keep"]] =  lines_to_keep
+  config_parsed_lines[["lines_to_migrate"]] = lines_to_migrate
+  return(config_parsed_lines)
+}
+
+second_pass_config_other_lines <- function(conf_other_lines){
+  second_pass_lines = list()
+  statement_prefixes  = c('if','when','def','else','else if')
+  nested_params_to_ignore = c('profiles')
+  statement_left_brackets = c()
+  statement_right_brackets = c()
+  lines_to_keep = c()
+  lines_to_migrate = c()
+  # 'manifest'
+  custom_params_to_ignore = c('report','timeline','trace','dag','env')
+  custom_params_to_ignore_closure = FALSE
+  custom_params_to_migrate = c('manifest')
+  in_manifest_closure = FALSE
+  in_expression = FALSE
+  in_nested_expression_to_ignore = FALSE
+  previous_line_status = list()
+  previous_line_status[["custom_params_to_ignore_closure"]] = custom_params_to_ignore_closure
+  previous_line_status[["in_manifest_closure"]] = in_manifest_closure
+  previous_line_status[["in_nested_expression_to_ignore"]] = in_nested_expression_to_ignore
+  for(i in 1:length(conf_other_lines)){
+    rlog::log_info(paste("SECOND_PASS ON CONFIG LINE:",conf_other_lines[i]))
+    line_split = strsplit(conf_other_lines[i],"\\s+")[[1]]
+    clean_line = line_split
+    for(t in 1:length(line_split)){
+      sanitized_token = trimws(line_split[t])
+      sanitized_token = gsub("'","\"",sanitized_token)
+      clean_line[t] = sanitized_token
+    }
+    clean_line = clean_line[clean_line!=""]
+    line_skip = FALSE
+    rlog::log_info(paste(c("CLEAN_LINE:",clean_line),collapse = " ",sep = " "))
+
+    if(length(clean_line)<1){
+      line_skip = TRUE
+    }
+    if((clean_line[1] %in% custom_params_to_ignore) & grepl("\\{",conf_other_lines[i])){
+     custom_params_to_ignore_closure = TRUE
+    } else if((clean_line[1] %in% custom_params_to_migrate) & grepl("\\{",conf_other_lines[i])){
+     in_manifest_closure = TRUE
+    } else if(custom_params_to_ignore_closure & grepl("\\}",conf_other_lines[i])){
+      custom_params_to_ignore_closure = FALSE
+      next
+    } else if(in_manifest_closure & grepl("\\}",conf_other_lines[i])){
+      in_manifest_closure = FALSE
+      next
+    } else if( clean_line[1] %in% nested_params_to_ignore){
+        rlog::log_info(paste("IN_NESTED_EXRESSION_TO_IGNORE:",paste(clean_line,collapse=" ")))
+        in_nested_expression_to_ignore = TRUE
+      statement_left_brackets = c()
+      statement_right_brackets = c()
+      right_brackets_to_add = unlist(str_extract_all(clean_line, "\\}"))
+      if(length(right_brackets_to_add) >0){
+        statement_right_brackets = c(statement_right_brackets,right_brackets_to_add)
+      }
+      left_brackets_to_add = unlist(str_extract_all(clean_line, "\\{"))
+      if(length(left_brackets_to_add) >0){
+        statement_left_brackets = c(statement_left_brackets,left_brackets_to_add)
+      }
+      if(clean_line[1] == "if" || clean_line[1] == "else" || clean_line[1] == "else if"){
+        condition_for_config = paste(clean_line,collapse =" ")
+      }
+      ### check if we've exited the expression
+      # if(clean_line[length(clean_line)] == "}" || grepl("\\{$",clean_line[length(clean_line)])){
+      if(length(statement_right_brackets) >0 || length(statement_left_brackets) > 0){
+        rlog::log_info(paste("right brackets:",paste(statement_right_brackets,collapse=", ")))
+        rlog::log_info(paste("left brackets:",paste(statement_left_brackets,collapse=", ")))
+        if(length(statement_right_brackets) == length(statement_left_brackets)){
+            in_nested_expression_to_ignore = FALSE
+          statement_left_brackets = c()
+          statement_right_brackets = c()
+          rlog::log_info(paste("EXITING_EXPRESSION"))
+          next
+        }
+      }
+    } else if(in_nested_expression_to_ignore){
+      right_brackets_to_add = unlist(str_extract_all(clean_line, "\\}"))
+      if(length(right_brackets_to_add) >0){
+        statement_right_brackets = c(statement_right_brackets,right_brackets_to_add)
+      }
+      left_brackets_to_add = unlist(str_extract_all(clean_line, "\\{"))
+      if(length(left_brackets_to_add) >0){
+        statement_left_brackets = c(statement_left_brackets,left_brackets_to_add)
+      }
+      ### check if we've exited the expression
+      # if(clean_line[length(clean_line)] == "}" || grepl("\\{$",clean_line[length(clean_line)])){
+      if(length(statement_right_brackets) >0 || length(statement_left_brackets) > 0){
+        rlog::log_info(paste("right brackets:",paste(statement_right_brackets,collapse=", ")))
+        rlog::log_info(paste("left brackets:",paste(statement_left_brackets,collapse=", ")))
+        if(length(statement_right_brackets) == length(statement_left_brackets)){
+          if(clean_line[1] %in% statement_prefixes){
+            in_expression = FALSE
+          } else{
+            in_nested_expression_to_ignore = FALSE
+          }
+          statement_left_brackets = c()
+          statement_right_brackets = c()
+          rlog::log_info(paste("EXITING_EXPRESSION"))
+          next
+        }
+      }
+    }
+    rlog::log_info(paste(c("custom_params_to_ignore_closure:",custom_params_to_ignore_closure),collapse = " ",sep = " "))
+    rlog::log_info(paste(c("in_manifest_closure:",in_manifest_closure),collapse = " ",sep = " "))
+    rlog::log_info(paste(c("in_nested_expression_to_ignore:",in_nested_expression_to_ignore),collapse = " ",sep = " "))
+    #### add lines back based on critierion
+    if(!in_manifest_closure & ! custom_params_to_ignore_closure & !in_nested_expression_to_ignore){
+      if(!previous_line_status[["in_manifest_closure"]] & ! previous_line_status[["custom_params_to_ignore_closure"]] & !previous_line_status[["in_nested_expression_to_ignore"]]){
+        rlog::log_info(paste("LINE TO KEEP:",conf_other_lines[i]))
+        lines_to_keep = c(lines_to_keep,conf_other_lines[i])
+      } else {
+        if(length(clean_line) > 0){
+          if(!grepl("\\{",clean_line[1]) & !grepl("\\}",clean_line[1])){
+            rlog::log_info(paste("LINE TO KEEP - 2nd condition -:",conf_other_lines[i]))
+            lines_to_keep = c(lines_to_keep,conf_other_lines[i])
+          }
+        }
+      }
+    } else if(in_manifest_closure & ! custom_params_to_ignore_closure & !in_nested_expression_to_ignore){
+      rlog::log_info(paste("LINE TO MIGRATE:",conf_other_lines[i]))
+      lines_to_migrate = c(lines_to_migrate,conf_other_lines[i])
+    } else if(in_expression){
+      rlog::log_info(paste("FOUND EXPRESSION LINE:",conf_other_lines[i]))
+      lines_to_keep = c(lines_to_keep,conf_other_lines[i])
+    } 
+    previous_line_status[["custom_params_to_ignore_closure"]] = custom_params_to_ignore_closure
+    previous_line_status[["in_manifest_closure"]] = in_manifest_closure
+    previous_line_status[["in_nested_expression_to_ignore"]] = in_nested_expression_to_ignore
+    #else{
+       #rlog::log_info(paste("FOUND UNCATEGORIZED LINE:",conf_other_lines[i]))
+       #lines_to_keep = c(lines_to_keep,conf_other_lines[i])
+    #}
+  }
+  ## double check manifest closure is done
+  if(length(lines_to_migrate) > 0){
+    if(!grepl("\\}",lines_to_migrate[length(lines_to_migrate)])){
+      rlog::log_info(paste("Adding left bracket '}' to ensure manifest closure is a proper expression"))
+      lines_to_migrate = c(lines_to_migrate,"}")
+    }
+  }
+  
+  ###
+  second_pass_lines[["lines_to_keep"]] = lines_to_keep
+  second_pass_lines[["lines_to_migrate"]] = lines_to_migrate
+  
+  return(second_pass_lines)
 }
 
 paramsFiller <- function(list_to_fill,params_list){

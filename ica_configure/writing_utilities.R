@@ -1,11 +1,33 @@
 options(stringsAsFactors=FALSE)
 library(rlog)
 library(stringr)
+###########
+clean_list <- function(list_to_clean){
+  # remove NAs from keys or Values
+  list_cleaned = list()
+  for(i in 1:length(names(list_to_clean))){
+    if(!is.na(names(list_to_clean)[i]) & !is.na(list_to_clean[[names(list_to_clean)[i]]])){
+      list_cleaned[[names(list_to_clean)[i]]] = list_to_clean[[names(list_to_clean)[i]]]
+    } else{
+      key_remove = names(list_to_clean)[i]
+      key_remove_value  = list_to_clean[[names(list_to_clean)[i]]]
+      rlog::log_warn(paste("Not including Key:",key_remove,"Value:",key_remove_value))
+    }
+  }
+  return(list_cleaned)
+}
 ###- ```write_params``` - consumes output of inject_params and writes new ```nextflow.config``` file
 write_params <- function(params_list,additional_lines = NULL,output_file=NULL){
   new_lines = c()
   if(is.null(output_file)){
     output_file = "nextflow.ica.config"
+  }
+  params_list1 = clean_list(params_list)
+  if(length(names(params_list1)) < 1){
+    rlog::log_warn(paste("No params found?\nExiting\n"))
+    stop()
+  } else{
+    params_list = params_list1
   }
   for(i in 1:length(names(params_list))){
     new_statement = paste(names(params_list)[i],"=",params_list[[names(params_list)[i]]],collpase=" ")
@@ -381,7 +403,7 @@ override_module_config <- function(module_list,ica_instance_table){
 }
 
 ###- ```write_modules``` - consumes output of modules_to_list and write new ```modules.config``` file 
-write_modules <- function(modules_list=NULL,output_file=NULL,template_file=NULL){
+write_modules <- function(modules_list=NULL,output_file=NULL,template_file=NULL,additional_lines=NULL){
   if(!is.null(modules_list)){
     modules_list1 = override_module_config(modules_list)
   } else{
@@ -390,10 +412,23 @@ write_modules <- function(modules_list=NULL,output_file=NULL,template_file=NULL)
   }
   if(length(names(modules_list1)) > 0 ){
     modules_list = modules_list1
+    modules_list1 = clean_list(modules_list)
+    if(length(names(modules_list1)) < 1){
+      rlog::log_warn(paste("No params found?\nExiting\n"))
+      stop()
+    } else{
+      modules_list = modules_list1
+    }
+  } else{
+    rlog::log_warn(paste("No module configuration found\nExiting\n"))
+    stop()
   }
   new_lines = c()
   if(is.null(output_file)){
     output_file = "conf/modules.ica.config"
+  }
+  if(!is.null(additional_lines)){
+    new_lines = c(additional_lines)
   }
   if(sum("general" %in% names(modules_list))  == 0){
     template_file_data = read.delim(template_file,quote="",header=F)

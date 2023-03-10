@@ -62,7 +62,7 @@ inject_params <- function(params_list, params_to_inject){
   }
   
   keys_already_present = names(params_list)[names(params_list) %in% names(params_to_inject_list)]
-  keys_not_present = names(params_to_inject_list)[! keys_already_present %in% names(params_to_inject_list)]
+  keys_not_present = names(params_to_inject_list)[! names(params_to_inject_list) %in% keys_already_present]
   if(length(keys_already_present) > 0){
     for(i in 1:length(keys_already_present)){
       params_list1[[keys_already_present[i]]] = params_list[[keys_already_present[[i]]]]

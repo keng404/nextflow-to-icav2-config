@@ -15,14 +15,16 @@ parser$add_argument("-s","--staging-directory", "--staging_directory", default=N
                     required = TRUE, help="staging_directory to stage nf-core pipelines")
 parser$add_argument("-r", "--run-scripts","--run_scripts", default=NULL,
                     help="run_script directory for this pipeline")
+parser$add_argument("-y", "--strict-xml-mode","--strict_xml_mode", action="store_true",default=FALSE,
+                    help="Strictly define dataInputs and parameters in XML")
 parser$add_argument("-d", "--dsl2-check","--dsl2_check", action="store_true",default=FALSE,
                     help="run_script directory for this pipeline")
 parser$add_argument("-v", "--develop-mode","--develop_mode", action="store_true",default=FALSE,
                     help="develop a pipeline to run on ICA")
 parser$add_argument("-u", "--update-xml","--update_xml", action="store_true",default=FALSE,
                     help="pre-flight update of XML file before creating the pipeline in ICA")
-parser$add_argument("-x","--generate-xml","--generate_xml", default=FALSE
-                    ,action="store_true", help = " auto-generate parameters XML file output -- independent from a nextflow_schema.json")
+#parser$add_argument("-x","--generate-xml","--generate_xml", default=FALSE
+#                    ,action="store_true", help = " auto-generate parameters XML file output -- independent from a nextflow_schema.json")
 parser$add_argument("-c", "--create-pipeline-in-ica","--create_pipeline_in_ica", action="store_true",default=FALSE,
                     help="Create pipeline in ICA")
 parser$add_argument("-a", "--api-key-file","--api_key_file", default = NULL,
@@ -43,17 +45,17 @@ parser$add_argument("-b","--base-ica-url","--base_ica_url",
                     default="ica.illumina.com", help = "ICA base URL")
 args <- parser$parse_args()
 
-
+input_json = NULL
 git_repos = args$git_repos
 git_repos = git_repos[git_repos != ""]
 pipeline_dirs = args$pipeline_dirs
 pipeline_dirs = pipeline_dirs[pipeline_dirs != ""]
-generate_xml = args$generate_xml
+#generate_xml = args$generate_xml
 if(!is.null(args$input)){
   input_json = args$input
-} else{
-  stop(paste("Please define an input nf-core JSON of pipelines"))
-}
+} #else{
+#  stop(paste("Please define an input nf-core JSON of pipelines"))
+#}
 if(!is.null(args$staging_directory)){
   staging_directory = args$staging_directory
   if(!dir.exists(staging_directory)){
@@ -129,15 +131,15 @@ if(!is.null(input_json)){
     rlog::log_info(paste("GRABBING nextflow pipelines from GitHub"))
     for(j in 1:length(git_repos)){
       git_repo_of_interest = git_repos[j]
-      tagname_split = strsplit(basename(dirname(git_repo_of_interest)),"\\:")[[1]]
+      tagname_split = strsplit(basename(git_repo_of_interest),"\\:")[[1]]
       git_branches_to_try = NULL
       if(length(tagname_split) > 1){
         git_branches_to_try = tagname_split[2]
         pipeline_name = tagname_split[1]
-        git_repo_base_url = paste(dirname(git_repo_of_interest),pipeline_name,"",sep="/")
+        git_repo_base_url = paste(dirname(git_repo_of_interest),pipeline_name,sep="/")
       } else{
         pipeline_name = tagname_split[1]
-        git_repo_base_url = paste(dirname(git_repo_of_interest),pipeline_name,"",sep="/")
+        git_repo_base_url = paste(dirname(git_repo_of_interest),pipeline_name,sep="/")
       }
       setwd(staging_directory)
       clone_cmd = paste("git clone",paste(git_repo_base_url,".git",sep=""))
@@ -173,6 +175,9 @@ for(k in 1:length(schema_jsons)){
   run_cmd = paste("Rscript create_xml/nf-core.json_to_params_xml.R --json",schema_jsons[k])
   if(args$nf_core_mode){
     run_cmd = paste(run_cmd,"--nf-core-mode")
+  }
+  if(args$strict_xml_mode){
+    run_cmd = paste(run_cmd,"--strict-mode")
   }
   rlog::log_info(paste("Running",run_cmd))
   system(run_cmd)
@@ -364,10 +369,10 @@ if(length(names(nextflow_scripts)) > 0 ){
       if(length(xml_files)>0){
         pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
         run_cmd = paste("Rscript develop_mode.downstream.R  --config-file", nextflow_configs[[scripts_to_create[l]]], "--nf-script", nextflow_scripts[[scripts_to_create[l]]])
-        if(generate_xml){
-          rlog::log_info("AUTO_UPDATE_XML for:",xml_files[1])
-          run_cmd = paste(run_cmd,"--generate-parameters-xml --parameters-xml", xml_files[1])
-        }
+        #if(generate_xml){
+         # rlog::log_info("AUTO_UPDATE_XML for:",xml_files[1])
+        #  run_cmd = paste(run_cmd,"--generate-parameters-xml --parameters-xml", xml_files[1])
+        #}
         if(length(workflow_scripts) > 0){
           for(wsi in 1:length(workflow_scripts)){
             run_cmd = paste(run_cmd,"--other-workflow-scripts", workflow_scripts[wsi])
@@ -375,6 +380,10 @@ if(length(names(nextflow_scripts)) > 0 ){
         }
         rlog::log_info(paste("NON_DSL2_PIPELINE: Adding helper-debug code",run_cmd))
         system(run_cmd)
+        ##### adding genome options to XML where appropriate
+        additional_xml_update_cmd = paste("Rscript update_xml_based_on_additional_configs.R --config-file",nextflow_configs[[scripts_to_create[l]]],"--parameters-xml",xml_files[1])
+        rlog::log_info(paste("NON_DSL2_PIPELINE: Updating XML files",additional_xml_update_cmd))
+        system(additional_xml_update_cmd)
       } else{
         rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]])))
       }
@@ -386,10 +395,10 @@ if(length(names(nextflow_scripts)) > 0 ){
       if(length(xml_files)>0){
         pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
         run_cmd = paste("Rscript develop_mode.downstream.R  --config-file", dsl2_nextflow_configs[[scripts_to_create[l]]], "--nf-script", dsl2_nextflow_scripts[[scripts_to_create[l]]])
-        if(generate_xml){
-          rlog::log_info("AUTO_UPDATE_XML for:",xml_files[1])
-          run_cmd = paste(run_cmd,"--generate-parameters-xml --parameters-xml", xml_files[1])
-        }
+        #if(generate_xml){
+        #  rlog::log_info("AUTO_UPDATE_XML for:",xml_files[1])
+        #  run_cmd = paste(run_cmd,"--generate-parameters-xml --parameters-xml", xml_files[1])
+        #}
         if(length(workflow_scripts) > 0){
           for(wsi in 1:length(workflow_scripts)){
             run_cmd = paste(run_cmd,"--other-workflow-scripts", workflow_scripts[wsi])
@@ -397,6 +406,10 @@ if(length(names(nextflow_scripts)) > 0 ){
         }
         rlog::log_info(paste("DSL2_BASED_PIPELINE: Adding helper-debug code",run_cmd))
         system(run_cmd)
+        ##### adding genome options to XML where appropriate
+        additional_xml_update_cmd = paste("Rscript update_xml_based_on_additional_configs.R --config-file",dsl2_nextflow_configs[[scripts_to_create[l]]],"--parameters-xml",xml_files[1])
+        rlog::log_info(paste("DSL2_BASED_PIPELINE: Updating XML files",additional_xml_update_cmd))
+        system(additional_xml_update_cmd)
       } else{
         rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
       }
