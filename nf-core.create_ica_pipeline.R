@@ -361,7 +361,7 @@ if(args$developer_mode){
     root = xmlRoot(doc)
     dataInputsNode = root[["dataInputs"]]
     data_input_names = xmlAttrs(root[["dataInputs"]][["dataInput"]])[["code"]]
-    tool_names = xmlAttrs(root[["steps"]][["step"]][["tool"]])[["code"]]
+    #tool_names = xmlAttrs(root[["steps"]][["step"]][["tool"]])[["code"]]
     if(!"project_dir" %in% data_input_names){
       new_input_node_attributes = c(code = "project_dir",format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")  
       node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
