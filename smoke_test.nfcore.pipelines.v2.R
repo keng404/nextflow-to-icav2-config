@@ -494,6 +494,7 @@ generateInputString <- function(cmd_str_split,nf_core_manifest,ica_auth_list,dem
   additional_data_input[["files_to_add"]] = c()
   additional_data_input[["input_string"]] = NULL
   input_string = "'*{1,2}*{fastq,fq}.gz'"
+  #additional_data_input[["input_string"]] = paste("input",input_string,sep = ":")
   #input_string = paste("'","\\${workflow.launchDir}/",gsub("'","",input_string),"'",sep="")
   # either a string expression or filename ...
   ### lookup against the nfcore_bundle_info to find template file
@@ -511,6 +512,7 @@ generateInputString <- function(cmd_str_split,nf_core_manifest,ica_auth_list,dem
   template_query = grepl(".tsv$|.csv$",nf_core_manifest[,1])
   if(sum(nfcore_query & template_query) > 0){
     final_query = nfcore_query & template_query
+    rlog::log_info(paste("FINAL_QUERY:",paste(final_query,sep=" ",collapse=" "),sep = " ",collapse = " "))
   ### set input_string equal to that file
     template_of_interest = nf_core_manifest[final_query,1][1]
     if(file.exists(template_of_interest)){
@@ -585,8 +587,8 @@ generateInputString <- function(cmd_str_split,nf_core_manifest,ica_auth_list,dem
           }
         }
         final_modified_command = paste(modified_cmd,sep = " ",collpase = " ")
-        additional_data_input[["final_modified_cmd"]] = paste("input:",gsub("input_files:","",final_modified_command),sep= "",collapse="")
-        additional_data_input[["final_modified_command"]] = paste("input:",gsub("input_files:","",final_modified_command),sep= "",collapse="")
+        additional_data_input[["final_modified_cmd"]] = paste("input_files:",gsub("input_files:","",final_modified_command),sep= "",collapse="")
+        additional_data_input[["final_modified_command"]] = paste("input_files:",gsub("input_files:","",final_modified_command),sep= "",collapse="")
         additional_data_input[["input_string"]] = paste("input",input_string,sep = ":")
       } else{
         rlog::log_info(paste("No demo dataset found for :", pipeline_name))
@@ -649,7 +651,8 @@ parseCommandString <- function(cmd_str,ica_auth_list,demo_data_manifest){
           }
         }
       } else if (token_of_interest == "--parameters"){
-        if(cmd_str_split[str_idx + 1] == "input:null" | grepl("^input",cmd_str_split[str_idx + 1]) ){
+        # | grepl("^input",cmd_str_split[str_idx + 1]) 
+        if(cmd_str_split[str_idx + 1] == "input:null"){
           input_metadata =   generateInputString(cmd_str_split,nfcore_bundle_info,ica_auth_list,demo_data_manifest)
           if(! "final_modified_command" %in% names(input_metadata)){
             cmd_str_split[str_idx + 1] = input_metadata[["input_string"]]

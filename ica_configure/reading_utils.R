@@ -657,8 +657,20 @@ loadModuleMetadata <- function(config_files){
                 if(value_collection != "["){
                   if(parameter_name != "unknown"){
                     rlog::log_info(paste("Point1 : Found value for parameter:",parameter_name,"value:",value_collection))
+                    value_collection = sub("//","// ",value_collection)
+                    value_collection_split  = strsplit(value_collection,"\\s+")[[1]]
+                    idx_of_interest = 1
+                    if(length(value_collection_split) > 0){
+                      if(sum(value_collection_split %in%  "//") > 0){
+                        idx_of_interest = (1:length(value_collection_split))[value_collection_split %in%  "//"]
+                      }
+                    }
                     if(add_closure){
-                      value_collection = paste("{",value_collection,"}",collapse = " ")
+                      if(idx_of_interest == 1){
+                        value_collection = paste("{",value_collection,"}",collapse = " ")
+                      } else{
+                        value_collection = paste("{",paste(value_collection_split[1:idx_of_interest-1],collapse=" "),"}",paste(value_collection_split[idx_of_interest:length(value_collection_split)],collapse=" "),collapse=" ")
+                      }
                     }
                     moduleMetadata[[parameter_name]] = value_collection
                     value_collection = c()
@@ -720,8 +732,18 @@ loadModuleMetadata <- function(config_files){
               if(value_collection != "["){
                 if(parameter_name != "unknown"){
                   rlog::log_info(paste("Point1 : Found value for parameter:",parameter_name,"value:",value_collection))
-                  if(add_closure){
+                  value_collection = sub("//","// ",value_collection)
+                  value_collection_split = strsplit(value_collection,"\\s+")[[1]]
+                  idx_of_interest = 1
+                  if(length(value_collection_split) > 0){
+                    if(sum(value_collection_split %in%  "//")>0){
+                      idx_of_interest = (1:length(value_collection_split))[value_collection_split %in%  "//"]
+                    }
+                  }
+                  if(idx_of_interest == 1){
                     value_collection = paste("{",value_collection,"}",collapse = " ")
+                  } else{
+                    value_collection = paste("{",paste(value_collection_split[1:idx_of_interest-1],collapse=" "),"}",paste(value_collection_split[idx_of_interest:length(value_collection_split)],collapse=" "),collapse=" ")
                   }
                   moduleMetadata[[parameter_name]] = value_collection
                   value_collection = c()

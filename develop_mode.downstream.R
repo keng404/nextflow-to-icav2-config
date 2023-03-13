@@ -894,13 +894,19 @@ classifyParameters <- function(paramsToXML){
 scripts_to_absolute_path = list()
 binary_dir = paste(dirname(nf_script),"bin",sep="/")
 assets_dir = paste(dirname(nf_script),"assets",sep="/")
+extensions_of_interest = c("py","pl","r","sh","bash")
 if(dir.exists(binary_dir)){
   setwd(dirname(nf_script))
   files_of_interest = list.files(binary_dir,recursive=TRUE)
   basename_files_of_interest = apply(t(files_of_interest),2,basename)
   for(f in 1:length(files_of_interest)){
-    rlog::log_info(paste("ADDING",files_of_interest[f]))
-    scripts_to_absolute_path[[files_of_interest[f]]] = paste("bin/",basename_files_of_interest[f],sep="")
+    basename_files_of_interest_split = strsplit(basename_files_of_interest[f],"\\.")[[1]]
+    if(sum(tolower(basename_files_of_interest_split[length(basename_files_of_interest_split)]) %in% extensions_of_interest) >0 ){
+      rlog::log_info(paste("ADDING",files_of_interest[f]))
+      scripts_to_absolute_path[[files_of_interest[f]]] = paste("bin/",basename_files_of_interest[f],sep="")
+    } else{
+      rlog::log_info(paste("IGNORING:",files_of_interest[f]))
+    }
   }
 }
 if(dir.exists(assets_dir)){
@@ -908,8 +914,13 @@ if(dir.exists(assets_dir)){
   files_of_interest = list.files(assets_dir,recursive=TRUE)
   basename_files_of_interest = apply(t(files_of_interest),2,basename)
   for(f in 1:length(files_of_interest)){
-    rlog::log_info(paste("ADDING",files_of_interest[f]))
-    scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
+    basename_files_of_interest_split = strsplit(basename_files_of_interest[f],"\\.")[[1]]
+    if(sum(tolower(basename_files_of_interest_split[length(basename_files_of_interest_split)]) %in% extensions_of_interest) >0 ){
+      rlog::log_info(paste("ADDING",files_of_interest[f]))
+      scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
+    } else{
+      rlog::log_info(paste("IGNORING:",files_of_interest[f]))
+    }
   }
 }
 pipeline_sub_dirs = list.dirs(dirname(nf_script))
@@ -976,18 +987,20 @@ absolute_path_update_module <- function(module_file){
       for(poi in 1:length(paths_of_interest)){
         relative_path_lookup = paths_of_interest[poi]
         basename_path_lookup = scripts_to_absolute_path[[paths_of_interest[poi]]]
-        if(basename(relative_path_lookup) %in% module_line_split){
+        if(sum(basename(relative_path_lookup) %in% module_line_split) > 0){
           replacement_value = paste("${workflow.launchDir}/",relative_path_lookup,sep="")
           found_update = TRUE
           found_updates = TRUE
-          if(!grepl("launchDir",module_line_split[module_line_split %in% relative_path_lookup] )){
+          rlog::log_info(paste("relative_path_lookup:",relative_path_lookup))
+          if(!grepl("launchDir",module_line_split[module_line_split %in% basename(relative_path_lookup)] )){
             replacement_value = override_nextflow_script_command(relative_path_lookup,replacement_value)
             module_line_split[module_line_split %in% relative_path_lookup] = replacement_value
           }
-        } else if(basename(basename_path_lookup) %in% module_line_split){
-          replacement_value = paste("${workflow.launchDir}/",relative_path_lookup,sep="")
+        } else if(sum(basename(basename_path_lookup) %in% module_line_split)>0){
+          replacement_value = paste("${workflow.launchDir}/",basename_path_lookup,sep="")
           found_update = TRUE
           found_updates = TRUE
+          rlog::log_info(paste("basename_path_lookup:",basename_path_lookup))
           if(!grepl("launchDir",module_line_split[module_line_split %in% basename_path_lookup] )){
             replacement_value = override_nextflow_script_command(basename_path_lookup,replacement_value)
             module_line_split[module_line_split %in% basename_path_lookup] = replacement_value
