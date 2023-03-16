@@ -943,7 +943,7 @@ print(names(scripts_to_absolute_path))
 # make sure files are executable
 override_nextflow_script_command <- function(script,associated_cmd){
   execution_choices = list()
-  execution_choices[["sh"]] = "source"
+  execution_choices[["sh"]] = "bash"
   execution_choices[["py"]] = "python"
   execution_choices[["r"]] = "Rscript"
   updated_cmd = ""
@@ -955,17 +955,19 @@ override_nextflow_script_command <- function(script,associated_cmd){
     if(script_file_extension %in% names(execution_choices)){
       updated_cmd = paste(execution_choices[[script_file_extension]],associated_cmd)
     } else{
-      updated_cmd = paste("source",associated_cmd)
+      updated_cmd = paste("bash",associated_cmd)
     }
   } else{
     updated_cmd = paste("\"","\n")
-    associated_cmd = paste(associated_cmd_split[associated_cmd_split != "template"],sep=" ",collapse = " ")
+    #associated_cmd = paste(associated_cmd_split[associated_cmd_split != "template"],sep=" ",collapse = " ")
     script_file_extension = tolower(script_filename_split[length(script_filename_split)])
-    if(script_file_extension %in% names(execution_choices)){
-      updated_cmd = paste(execution_choices[[script_file_extension]],associated_cmd,"\n","\"")
-    } else{
-      updated_cmd = paste("source",associated_cmd,"\n","\"")
-    }
+    #if(script_file_extension %in% names(execution_choices)){
+    #  updated_cmd = paste(execution_choices[[script_file_extension]],associated_cmd,"\n","\"")
+    #} else{
+      updated_cmd = paste(associated_cmd,"\n","\"")
+      updated_cmd = gsub("\\$\\{","$",updated_cmd)
+      updated_cmd = gsub("\\}","",updated_cmd)
+    #}
   }
   return(paste(updated_cmd,sep = " ",collapse=""))
 }
@@ -988,12 +990,12 @@ absolute_path_update_module <- function(module_file){
         relative_path_lookup = paths_of_interest[poi]
         basename_path_lookup = scripts_to_absolute_path[[paths_of_interest[poi]]]
         if(sum(basename(relative_path_lookup) %in% module_line_split) > 0){
-          replacement_value = paste("${workflow.launchDir}/",relative_path_lookup,sep="")
+          replacement_value = paste("${workflow.launchDir}/",basename_path_lookup,sep="")
           found_update = TRUE
           found_updates = TRUE
           rlog::log_info(paste("relative_path_lookup:",relative_path_lookup))
           if(!grepl("launchDir",module_line_split[module_line_split %in% basename(relative_path_lookup)] )){
-            replacement_value = override_nextflow_script_command(relative_path_lookup,replacement_value)
+            replacement_value = override_nextflow_script_command(basename_path_lookup,replacement_value)
             module_line_split[module_line_split %in% relative_path_lookup] = replacement_value
           }
         } else if(sum(basename(basename_path_lookup) %in% module_line_split)>0){
@@ -1010,8 +1012,10 @@ absolute_path_update_module <- function(module_file){
     }
     if(found_update){
       if("template" %in% module_line_split){
-        module_line_split = module_line_split[module_line_split != "template"]
-        module_line_split = paste("'''\n",module_line_split,"\n","'''",collapse = " ",sep = " ")
+        #module_line_split = module_line_split[module_line_split != "template"]
+        #module_line_split = paste('\t"""\n',module_line_split,"\n",'\t"""',collapse = " ",sep = " ")
+        #module_line_split = gsub("'","",module_line_split)
+        module_line_split = paste("\n",module_line_split)
       }
       new_line = paste(module_line_split,collapse = " ",sep = " ")
       rlog::log_info(paste("UPDATING PATH in this line:",new_line))

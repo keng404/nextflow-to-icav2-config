@@ -58,9 +58,9 @@ create_conditional_statements = function(modules_list,module_name = NULL){
   if( length(keys_of_interest) > 0){
     for(j in 1:length(keys_of_interest)){
       conditional_statement_lines = c(conditional_statement_lines,keys_of_interest[j])
-      conditional_statement_lines = c(conditional_statement_lines,paste("\t","process {",collapse=""))
+      #conditional_statement_lines = c(conditional_statement_lines,paste("\t","process {",collapse=""))
       if(!is.null(module_name)){
-        conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",module_name," {",collapse=""))
+        conditional_statement_lines = c(conditional_statement_lines,paste("\t",module_name," {",collapse=""))
       }
       process_keys = names(modules_list[[keys_of_interest[j]]])
       for(k in 1:length(process_keys)){
@@ -68,9 +68,9 @@ create_conditional_statements = function(modules_list,module_name = NULL){
         sub_process_value = paste(modules_list[[keys_of_interest[j]]][[process_keys[k]]],collapse=" ")
         if(length(sub_process_value) > 0){
             if(!is.null(module_name)){
-              conditional_statement_lines = c(conditional_statement_lines,paste("\t\t\t",process_keys[k],"=",sub_process_value,collapse=" "))
-            } else{
               conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",process_keys[k],"=",sub_process_value,collapse=" "))
+            } else{
+              conditional_statement_lines = c(conditional_statement_lines,paste("\t",process_keys[k],"=",sub_process_value,collapse=" "))
             }
         } else{
           rlog::log_warn(paste("Checkout this process configuration:",keys_of_interest[j],"->",process_keys[k]))
@@ -80,8 +80,8 @@ create_conditional_statements = function(modules_list,module_name = NULL){
     }
   }
   if(length(conditional_statement_lines)>0){
-    conditional_statement_lines = c(conditional_statement_lines,"\t}")
-    conditional_statement_lines = c(conditional_statement_lines,"}\n")
+    conditional_statement_lines = c(conditional_statement_lines,"\t}\n")
+   # conditional_statement_lines = c(conditional_statement_lines,"}\n")
   }
   #conditional_statement_lines = c(conditional_statement_lines,"}\n")
   return(conditional_statement_lines)
@@ -100,9 +100,9 @@ create_regular_statements = function(modules_list,module_name = NULL){
   if( length(keys_of_interest) > 0){
     for(j in 1:length(keys_of_interest)){
       #regular_statement_lines = c(regular_statement_lines,keys_of_interest[j])
-      regular_statement_lines = c(regular_statement_lines,paste("\t","process {",collapse=""))
+     # regular_statement_lines = c(regular_statement_lines,paste("\t","process {",collapse=""))
       if(!is.null(module_name)){
-        regular_statement_lines = c(regular_statement_lines,paste("\t\t",module_name," {",collapse=""))
+        regular_statement_lines = c(regular_statement_lines,paste("\t",module_name," {",collapse=""))
       }
       sub_process_keys = names(modules_list[[keys_of_interest]])
       ##sub_process_value = paste(modules_list[[keys_of_interest[j]]][["default"]],collapse=" ")
@@ -111,9 +111,9 @@ create_regular_statements = function(modules_list,module_name = NULL){
         for(sk in 1:length(sub_process_keys)){
           sub_process_value = paste(modules_list[["default"]][[sub_process_keys[sk]]],collapse=" ")
           if(!is.null(module_name)){
-           regular_statement_lines = c(regular_statement_lines,paste("\t\t\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
+           regular_statement_lines = c(regular_statement_lines,paste("\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
           } else{
-            regular_statement_lines = c(regular_statement_lines,paste("\t\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
+            regular_statement_lines = c(regular_statement_lines,paste("\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
           }
         }
       } else{
@@ -123,7 +123,7 @@ create_regular_statements = function(modules_list,module_name = NULL){
     }
   }
   if(length(regular_statement_lines) > 0){
-    regular_statement_lines = c(regular_statement_lines,"\t\t}\n")
+ #   regular_statement_lines = c(regular_statement_lines,"\t\t}\n")
     regular_statement_lines = c(regular_statement_lines,"\t}\n")
   }
   return(regular_statement_lines)
@@ -433,6 +433,7 @@ write_modules <- function(modules_list=NULL,output_file=NULL,template_file=NULL,
   if(sum("general" %in% names(modules_list))  == 0){
     template_file_data = read.delim(template_file,quote="",header=F)
     template_file_data = t(template_file_data)
+    template_file_data = template_file_data[1:(length(template_file_data)-1)]
     new_lines = c(new_lines,template_file_data)
   } else{
     general_config_data = create_conditional_statements(modules_list[["general"]])
@@ -462,6 +463,7 @@ write_modules <- function(modules_list=NULL,output_file=NULL,template_file=NULL,
     rlog::log_warn(paste("NOT adding configuration"))
   }
 #########  
+  new_lines = c(new_lines,"}")
   rlog::log_info(paste("WRITING out modules configuration to:",output_file))
   updated_nextflow_config_file = gsub(".config$",".config.tmp",output_file)
   write.table(x=new_lines,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)

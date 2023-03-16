@@ -27,7 +27,7 @@ docker_result = system(docker_cmd,intern = TRUE)
 #####################
 docker_command_error <- function(cmd_out){
   error_in_output = FALSE
-  eror_in_line = apply(t(cmd_out),2,function(x) grepl("error",x))
+  eror_in_line = apply(t(cmd_out),2,function(x) grepl("error|unexpected|fail",x,ignore.case = TRUE))
   if(sum(eror_in_line) > 0){
     error_in_output = TRUE
   }
