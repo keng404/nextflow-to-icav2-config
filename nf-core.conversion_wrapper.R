@@ -431,6 +431,7 @@ if(args$create_pipeline_in_ica){
     scripts_to_create = c(scripts_to_create,dsl2_scripts_to_update)
     scripts_skipped =scripts_skipped[!scripts_skipped %in% dsl2_scripts_to_update]
     for(l in 1:length(scripts_to_create)){
+      #### TODOs : Add in check to  'test' nextflow code with no inputs prior to creating pipeline
       setwd(run_scripts)
       if(scripts_to_create[l] %in% names(nextflow_scripts)){
       xml_files = list.files(dirname(nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)

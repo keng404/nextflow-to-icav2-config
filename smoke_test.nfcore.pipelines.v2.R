@@ -81,7 +81,7 @@ if(is.null(ica_project_id) && is.null(ica_project_name)){
     stop(paste("Please provide a valid project name [",ica_project_name,"]\nFound",paste(ica_project_lookup_table[,1],collapse=", ")))
   }
 }
-########3
+########
 ica_auth_list = list()
 ica_auth_list[["--project-id"]] = ica_project_id
 ica_auth_list[["--server-url"]] = server_url

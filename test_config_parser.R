@@ -244,31 +244,59 @@ add_genome_to_parameters_list <- function(keys_to_add,xml_file){
 }
 
 #################################################
-params_list = parse_json(converted_file=output_file)
-if(is.null(params_list)){
-  if(!is.null(config_url)){
-    rlog::log_error(paste("Error converting:",config_url))
+config_file_of_interest <- function(config_file){
+  interesting_file = FALSE
+  found_params = FALSE
+  found_genome = FALSE
+  config_dat = read.delim(config_file)
+  for(i in 1:nrow(config_dat)){
+    line_of_interest = gsub("\\{","",config_dat[i,])
+    line_split = strsplit(line_of_interest,"\\s+")[[1]]
+    if(sum("params" %in% line_split) > 0){
+      found_params = TRUE
+    }
+    if(sum("genome" %in% line_split) > 0){
+      found_genome = TRUE
+    }
+  }
+  if(found_genome & found_params){
+    interesting_file = TRUE
+  }
+  return(interesting_file) 
+}
+if(config_file_of_interest(output_file)){
+  params_list = parse_json(converted_file=output_file)
+  if(is.null(params_list)){
+    if(!is.null(config_url)){
+      rlog::log_error(paste("Error converting:",config_url))
+    } else{
+      rlog::log_error(paste("Error converting:",config_file))
+    }
   } else{
-    rlog::log_error(paste("Error converting:",config_file))
+    rlog::log_info(paste("modifying XML with params_list"))
+    # check if genome is in parameters section of XML
+    # if not, add options,
+    # if yes, add names(params_list[["params"]][["genomes"]]) to options
+    #########################################
+    rlog::log_info(paste("PARSING parameters XML file:",parameter_xml_file))
+    doc = XML::xmlToList(parameter_xml_file)
+    ###### Grab all parameters from XML under each tool and output to list ----
+    tool_names = doc[["steps"]]
+    add_genome_to_xml = !genome_in_parameters_list(tool_names)
+    rlog::log_info(paste("add_genome_to_xml:", add_genome_to_xml))
+    if(add_genome_to_xml){
+      #add_genome_to_parameters_list
+      add_genome_to_parameters_list(keys_to_add = names(params_list[["params"]][["genomes"]]),xml_file = parameter_xml_file)
+    } else{
+      #modify_genome_in_parameters_list
+      rlog::log_warn(paste(c("Parameter[ genome ] is already present in your XML. Double-check that the following options are selectable for genome:",names(params_list[["params"]][["genomes"]]))))
+    }
   }
 } else{
-  rlog::log_info(paste("modifying XML with params_list"))
-  # check if genome is in parameters section of XML
-  # if not, add options,
-  # if yes, add names(params_list[["params"]][["genomes"]]) to options
-  #########################################
-  rlog::log_info(paste("PARSING parameters XML file:",parameter_xml_file))
-  doc = XML::xmlToList(parameter_xml_file)
-  ###### Grab all parameters from XML under each tool and output to list ----
-  tool_names = doc[["steps"]]
-  add_genome_to_xml = !genome_in_parameters_list(tool_names)
-  rlog::log_info(paste("add_genome_to_xml:", add_genome_to_xml))
-  if(add_genome_to_xml){
-    #add_genome_to_parameters_list
-    add_genome_to_parameters_list(keys_to_add = names(params_list[["params"]][["genomes"]]),xml_file = parameter_xml_file)
+  if(!is.null(config_url)){
+    rlog::log_info(paste("Not converting:",config_url))
   } else{
-    #modify_genome_in_parameters_list
-    rlog::log_warn(paste(c("Parameter[ genome ] is already present in your XML. Double-check that the following options are selectable for genome:",names(params_list[["params"]][["genomes"]]))))
+    rlog::log_info(paste("Not converting:",config_file))
   }
 }
 

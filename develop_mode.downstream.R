@@ -967,9 +967,10 @@ override_nextflow_script_command <- function(script,associated_cmd){
       updated_cmd = paste(associated_cmd,"\n","\"")
       updated_cmd = gsub("\\$\\{","$",updated_cmd)
       updated_cmd = gsub("\\}","",updated_cmd)
+      updated_cmd = paste("'",updated_cmd,"'",sep="")
     #}
   }
-  return(paste(updated_cmd,sep = " ",collapse=""))
+  return(paste("",updated_cmd,sep ="\t",collapse=""))
 }
 
 ## function to update module based on these conditions
@@ -1015,7 +1016,19 @@ absolute_path_update_module <- function(module_file){
         #module_line_split = module_line_split[module_line_split != "template"]
         #module_line_split = paste('\t"""\n',module_line_split,"\n",'\t"""',collapse = " ",sep = " ")
         #module_line_split = gsub("'","",module_line_split)
-        module_line_split = paste("\n",module_line_split)
+        #module_line_split = module_line_split[2:length(module_line_split)]
+        rlog::log_info(paste("TEMPLATE_LINE: here I am:", paste(module_line_split,collapse = " ", sep = " ")))
+        module_line_split = paste(module_line_split,collapse = " ", sep = " ")
+        module_line_split = strsplit(module_line_split,"\\s+")[[1]]
+        module_line_split = module_line_split[!module_line_split %in% c("bash","python","Rscript")]
+        rlog::log_info(paste("TEMPLATE_LINE_v2: here I am:", paste(module_line_split,collapse = " ", sep = " ")))
+        module_line_split = paste(module_line_split,collapse = " ", sep = " ")
+        module_line_split = gsub("\\$\\{","",module_line_split)
+        module_line_split = gsub("\\}","",module_line_split)
+        module_line_split = gsub("workflow.launchDir/","",module_line_split)
+        module_line_split = strsplit(module_line_split,"\\s+")[[1]]
+        module_line_split = paste(module_line_split[1],paste("'",basename(module_line_split[2:length(module_line_split)]),"'",sep=""))
+        module_line_split = paste(module_line_split,collapse = " ", sep = " ")
       }
       new_line = paste(module_line_split,collapse = " ",sep = " ")
       rlog::log_info(paste("UPDATING PATH in this line:",new_line))
