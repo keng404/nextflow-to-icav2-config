@@ -434,10 +434,21 @@ if(args$create_pipeline_in_ica){
       #### TODOs : Add in check to  'test' nextflow code with no inputs prior to creating pipeline
       setwd(run_scripts)
       if(scripts_to_create[l] %in% names(nextflow_scripts)){
+      sanity_check = paste("Rscript testing_pipelines/test_nextflow_script.R --nextflow-script", nextflow_scripts[[scripts_to_create[l]]],"--docker-image nextflow/nextflow:22.04.3","--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))   
+      rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
+      sanity_check_out = system(sanity_check,intern = T)
+      passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
+      if(length(passed_sanity_check)==0){
+        passed_sanity_check = FALSE
+      }
+      rlog::log_info(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+      if(!passed_sanity_check){
+        rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+      }
       xml_files = list.files(dirname(nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
       xml_files = xml_files[!grepl("nfcore",xml_files)]
       xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
-      if(length(xml_files)>0){
+      if(length(xml_files)>0 & passed_sanity_check){
         pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
             run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",nextflow_scripts[[scripts_to_create[l]]],"--workflow-language nextflow")
@@ -460,7 +471,18 @@ if(args$create_pipeline_in_ica){
         xml_files = list.files(dirname(dsl2_nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
         xml_files = xml_files[!grepl("nfcore",xml_files)]
         xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
-        if(length(xml_files)>0){
+        sanity_check = paste("Rscript testing_pipelines/test_nextflow_script.R --nextflow-script", dsl2_nextflow_scripts[[scripts_to_create[l]]],"--docker-image nextflow/nextflow:22.04.3","--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))   
+        rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
+        sanity_check_out = system(sanity_check,intern = T)
+        passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
+        if(length(passed_sanity_check)==0){
+          passed_sanity_check = FALSE
+        }
+        rlog::log_info(paste(dsl2_nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+        if(!passed_sanity_check){
+          rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+        }
+        if(length(xml_files)>0 & passed_sanity_check){
           pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
           if(!is.null(ica_project_name)){
             run_cmd  = paste("Rscript nf-core.create_ica_pipeline.R --nextflow-script",dsl2_nextflow_scripts[[scripts_to_create[l]]],"--workflow-language nextflow")

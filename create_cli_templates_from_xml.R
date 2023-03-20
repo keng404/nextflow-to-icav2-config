@@ -16,7 +16,7 @@ data_inputs_to_list <- function(data_input_xml){
     data_input_list[[data_input_name]][["required"]] = data_input[[".attrs"]][["required"]]
     data_input_list[[data_input_name]][["multiValue"]] = data_input[[".attrs"]][["multiValue"]]
     if(data_input[[".attrs"]][["multiValue"]]){
-      data_input_list[[data_input_name]][["value"]] = "STRINGS"
+      data_input_list[[data_input_name]][["value"]] = c()
     } else{
       data_input_list[[data_input_name]][["value"]] = "STRING"
     }
@@ -134,10 +134,16 @@ cli_preview <- function(json_template,workflow_language){
       if("value" %in% names(json_template_data[[cli_prefix]][[key_name]])){
         key_value = json_template_data[[cli_prefix]][[key_name]][["value"]]
       }
+      if(length(key_value) > 0 ){
+        key_value = paste(key_value,sep=",",collapse=",")
+      }
       rlog::log_info(paste("KEY_VALUE:",key_value,"KEY_NAME:",key_name))
       if(key_value == "STRINGS" & cli_prefix == "input"){
         key_value = "DATA_ID1,DATA_ID2,...,DATA_IDxx"
       } 
+      if(key_value == "test" & key_name == "outdir"){
+        key_value = "out"
+      }
       string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
       cli_interstitial = c(cli_interstitial,string_to_add)
     }

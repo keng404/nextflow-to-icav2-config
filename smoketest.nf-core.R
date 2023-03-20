@@ -99,9 +99,21 @@ ica_auth_list[["--project-id"]] = ica_project_id
 ica_auth_list[["--server-url"]] = server_url
 ica_auth_list[["--x-api-key"]] = api_key
 #############
-
+parse_json <- function(json_file){
+  out = tryCatch(
+    {
+      jsonlite::fromJSON(json_file)
+    }, 
+    error = function(cond){
+      rlog::log_warn(cond)
+      rlog::log_warn(paste("Could not properly read:",json_file))
+      return(NULL)
+    }
+  )
+  return(out)
+}
 ###########
-getDatas <- function(pipeline_name,data_type,ica_auth_list = ica_auth_list){
+getDatas <- function(pipeline_code_name,data_type,ica_auth_list = ica_auth_list){
   pipeline_name = NULL
   data_types = c("FOLDER","FILE")
   file_extensions_keep = c('csv','tsv','json','gz')
@@ -113,7 +125,7 @@ getDatas <- function(pipeline_name,data_type,ica_auth_list = ica_auth_list){
   if(data_type == "DIRECTORY"){
     data_type = "FOLDER"
   }
-  cmd_base  = paste("icav2 projectdata list",paste("/",paste(pipeline_name,"_project_dir",sep=""),"/",sep = "") ,"-o json --parent-folder --data-type",data_type,sep = " ",collapse = " ")
+  cmd_base  = paste("icav2 projectdata list",paste("/",paste(pipeline_code_name,"_project_dir",sep=""),"/",sep = "") ,"-o json --parent-folder --data-type",data_type,sep = " ",collapse = " ")
   for(i in 1:length(names(ica_auth_list))){
     cmd_base = paste(cmd_base,names(ica_auth_list)[i],ica_auth_list[[names(ica_auth_list)[i]]],sep = " ",collapse = " ")
   }
@@ -121,25 +133,19 @@ getDatas <- function(pipeline_name,data_type,ica_auth_list = ica_auth_list){
   rlog::log_info(paste("GRABBING_DATA",cmd_base))
   system(cmd_base)
   #######
-  data_table = rjson::fromJSON(file = 'projectdata.json')
+  data_table = parse_json(json_file = 'projectdata.json')
   if(length(data_table$items) > 0 ){
-    for(j in 1:length(data_table$items)){
-      file_path = data_table$items[[j]]$details$path
+    for(j in 1:length(data_table$items$details$path)){
+      file_path = data_table$items$details$path[j]
       file_path_split = strsplit(basename(file_path),"\\.")[[1]]
       file_extension = file_path_split[length(file_path_split)]
-      if(token %in% tokens_abstracted){
-        if(token ==  "input_files:FILE" & file_extension %in% file_extensions_keep){
-          dataz = c(dataz,data_table$items[[j]]$id)
-        } else{
-          rlog::log_info(paste("Adding the file",file_path,"to the command line"))
-          dataz = c(dataz,data_table$items[[j]]$id)
-        }
+      if(data_type == "FILE" & file_extension %in% file_extensions_keep){
+        dataz = c(dataz,data_table$items$id[j])
+      } else if(data_type == "FOLDER"){
+        rlog::log_info(paste("Adding the",tolower(data_type),file_path,"to the command line"))
+        dataz = c(dataz,data_table$items$id[j])
       } else{
-        if(j == 1){
-          if(file_extension %in% file_extensions_keep){
-            dataz = c(dataz,data_table$items[[j]]$id)
-          }
-        }
+        rlog::log_info(paste("Not adding",file_path))
       }
     }
   } else{
@@ -149,6 +155,7 @@ getDatas <- function(pipeline_name,data_type,ica_auth_list = ica_auth_list){
   return(dataz)
 }
 #############
+
 getFileId <- function(ica_path, ica_auth_list = ica_auth_list){
   upload_id = NULL
   keys_of_interest  = names(ica_auth_list)
@@ -160,9 +167,11 @@ getFileId <- function(ica_path, ica_auth_list = ica_auth_list){
   lookup_cmd = paste(lookup_cmd, "-o json > datalookup.json",sep = " ", collapse = " ")
   rlog::log_info(paste('RUNNING_LOOKUP:',lookup_cmd))
   system(lookup_cmd)
-  upload_out = rjson::fromJSON(file="datalookup.json")
-  if('id' %in% names(upload_out)){
-    upload_id = upload_out$id
+  upload_out = parse_json(json_file="datalookup.json")
+  if(!is.null(upload_out)){
+    if('id' %in% names(upload_out)){
+      upload_id = upload_out$id
+    }
   }
   return(upload_id)
 }
@@ -185,8 +194,35 @@ uploadFile <- function(local_path = NULL,destination_path = NULL,ica_auth_list =
   system(base_cmd)
   Sys.sleep(15)
   file_ids = c()
-  upload_id = getFileId(paste("/",basename(destination_path),sep=""),ica_auth_list = ica_auth_list)
+  upload_id = getFileId(destination_path,ica_auth_list = ica_auth_list)
   return(upload_id)
+}
+
+deleteFile <- function(ica_path = NULL,ica_auth_list = ica_auth_list){
+  upload_id = NULL
+  delete_occur = FALSE
+  if(is.null(ica_path)){
+    stop(paste("Please define local path to upload"))
+  }
+  base_cmd = "icav2 projectdata delete"
+  base_cmd = paste(base_cmd,ica_path, sep = " ", collapse = " ")
+  keys_of_interest  = names(ica_auth_list)
+  for(key in 1:length(keys_of_interest)){
+    key_of_interest = keys_of_interest[key]
+    base_cmd = paste(base_cmd,key_of_interest,ica_auth_list[[key_of_interest]],sep = " ",collapse = " ")
+  }
+  base_cmd = paste(base_cmd,"-o json > deleteFile.json")
+  rlog::log_info(paste('RUNNING_DELETION:',base_cmd))
+  system(base_cmd)
+  delete_confirm = parse_json(json_file="deleteFile.json")
+  if(!is.null(delete_confirm)){
+    if("status" %in% names(delete_confirm)){
+      if(delete_confirm[["status"]] == 204){
+        delete_occur = TRUE
+      }
+    }
+  }
+  return(delete_occur)
 }
 #####
 findICAFilePath <- function(file_name,additional_path = NULL,ica_auth_list = ica_auth_list){
@@ -201,7 +237,7 @@ findICAFilePath <- function(file_name,additional_path = NULL,ica_auth_list = ica
   base_cmd = paste(base_cmd," --match-mode FUZZY -o json > findfile.json")
   rlog::log_info(paste('RUNNING_FIND_PATH:',base_cmd))
   system(base_cmd)
-  findfile_out = rjson::fromJSON(file="findfile.json")
+  findfile_out = parse_json(json_file="findfile.json")
   size_iter = 1
   page_size = 1000
   while(!is.null(findfile_out$nextPageToken)){
@@ -286,11 +322,12 @@ get_demo_dataset <- function(pipeline_alias,nfcore_manifest_bundle,demo_dataset_
   demo_dataset_list[["filenames"]] = demo_dataset_files
   return(demo_dataset_list)
 }
-create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines){
+create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,full_spreadsheet_header){
   spreadsheet_lines = as.matrix(spreadsheet_lines)
-  adding_cols  = c()
+  #adding_cols  = c()
   for(i in 1:length(cols_to_add)){
     col_to_add = cols_to_add[i]
+    col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% cols_to_add]
     if(sum("enum" %in% names(field_metadata[[col_to_add]]))){
       add_col = rep(field_metadata[[col_to_add]][["enum"]][1],nrow(spreadsheet_lines))
     } else{
@@ -300,9 +337,23 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines){
         add_col = paste("group",1:nrow(spreadsheet_lines),sep="")
       }
     }
-    adding_cols = cbind(adding_cols,add_col)
+    # shuffle columns according to header and column we intend to add
+    if(col_idx > 1 & col_idx < length(full_spreadsheet_header)){
+      spreadsheet_lines = cbind(spreadsheet_lines[,1:(col_idx-1)],add_col,spreadsheet_lines[,col_idx:length(full_spreadsheet_header)])
+      #$full_spreadsheet_header = c(full_spreadsheet_header[1:(col_idx-1)],col_to_add,full_spreadsheet_header[col_idx:length(full_spreadsheet_header)])
+    } else if(col_idx == 1){
+      spreadsheet_lines = cbind(add_col,spreadsheet_lines)
+      #full_spreadsheet_header = c(col_to_add,full_spreadsheet_header)
+    } else if(col_idx == length(full_spreadsheet_header)){
+      spreadsheet_lines = cbind(spreadsheet_lines,add_col)
+      #ull_spreadsheet_header = c(full_spreadsheet_header,col_to_add)
+    }
   }
-  new_spreadsheet_lines = cbind(spreadsheet_lines,adding_cols)
+  new_spreadsheet_lines = spreadsheet_lines
+  new_spreadsheet_lines = as.data.frame(new_spreadsheet_lines)
+  print(head(new_spreadsheet_lines))
+  print(full_spreadsheet_header)
+  colnames(new_spreadsheet_lines)  = full_spreadsheet_header
   return(new_spreadsheet_lines)
 }
 #demodataset_list = get_demo_dataset("atacseq",nfcore_manifest_bundle=nfcore_bundle_info,demo_dataset_bundle=demo_data_manifest)
@@ -317,6 +368,7 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
     cols_to_add = spreadsheet_header[!spreadsheet_header %in% fields_assumed]
     cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]]]
   }
+  if(sum(spreadsheet_header %in% fields_assumed) > 1){
   spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
   spreadsheet_lines = c()
   # assume paired-end
@@ -355,27 +407,39 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   print(cat(head(spreadsheet_lines)))
   if(length(cols_to_add) >0){
     print(cols_to_add)
-    spreadsheet_lines = create_dummy_columns(cols_to_add,field_metadata,spreadsheet_lines)
+    spreadsheet_lines = create_dummy_columns(cols_to_add,field_metadata,spreadsheet_lines,spreadsheet_header)
   } 
   spreadsheet_lines = as.data.frame(spreadsheet_lines)
-  colnames(spreadsheet_lines) = spreadsheet_header
+  #colnames(spreadsheet_lines) = spreadsheet_header
   ### write spreadsheet
-  write.table(spreadsheet_lines,file=paste(pipeline_name,".input.csv",sep=""),row.names=F,sep=",")
+  write.table(spreadsheet_lines,file=paste(pipeline_name,".input.csv",sep=""),row.names=F,sep=",",quote=F)
   rlog::log_info(paste("Generated input spreadsheet:",paste(pipeline_name,".input.csv",sep="")))
   # upload to ICA
   project_directory = paste("/",pipeline_name,"_project_dir/",sep="")
-  destination_path = paste(project_directory,"/",paste(pipeline_name,".input.csv",sep=""),sep="",collapse="")
+  destination_path = paste(project_directory,paste(pipeline_name,".input.csv",sep=""),sep="",collapse="")
+  existing_file_id = getFileId(ica_path = destination_path, ica_auth_list = ica_auth_list)
+  if(!is.null(existing_file_id)){
+    delete_status = deleteFile(ica_path = destination_path,ica_auth_list = ica_auth_list)
+    if(delete_status == FALSE){
+      rlog::log_warn(paste("Not sure if we could delete existing file on ICA:",destination_path))
+    }
+  }
   samplesheet_id = uploadFile(local_path = paste(pipeline_name,".input.csv",sep=""),destination_path = destination_path,ica_auth_list = ica_auth_list)
+  } else{
+    rlog::log_warn(paste("Currently only able to generate FASTQ-based samplesheets"))
+    rlog::log_warn(paste("I see",paste(spreadsheet_header,sep=",")))
+    samplesheet_id = NULL
+  }
   return(samplesheet_id)
 }
 
 fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_template,input_spreadsheet=NULL,ica_auth_list = ica_auth_list){
-  files_of_interest = getDatas(pipeline_name,"FILE",ica_auth_list = ica_auth_list)
-  folders_of_interest = getDatas(pipeline_name,"FOLDER",ica_auth_list = ica_auth_list)
+  files_of_interest = getDatas(pipeline_code_name=pipeline_name,"FILE",ica_auth_list = ica_auth_list)
+  folders_of_interest = getDatas(pipeline_code_name=pipeline_name,"FOLDER",ica_auth_list = ica_auth_list)
   # how to get initial files staged within project dir?
   json_template1 = json_template
   if(is.null(input_spreadsheet)){
-    json_template1[["parameters"]][["input"]][["value"]] = "*{fastq,fg}.gz"
+    json_template1[["parameters"]][["input"]][["value"]] = "'*{fastq,fg}.gz'"
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
     
@@ -475,14 +539,13 @@ for( i in 1:length(pipeline_creation_jsons)){
     #STEP 2 : parse nf-core manifest bundle (ties pipeline to demo dataset) and demo data bundle (ties demo dataset to data_ids)
     #   
     samplesheet = create_dummy_spreadsheet(pipeline_name,input_schema,demodataset_list)
-    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list, json_template=template_json_list,input_spreadsheet=samplesheet,ica_auth_list = ica_auth_list)
-    revised_template_json_list = set_dummy_parameter_setting(updated_template_json_list)
+    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,input_spreadsheet=samplesheet,ica_auth_list = ica_auth_list)
   } else if(length(json_of_interest) == 0){
     rlog::log_info(paste("No schema_input.json for:",basename(pipeline_dir)))
-    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_datasett=demodataset_list, json_template=template_json_list,ica_auth_list = ica_auth_list)
+    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_datasett=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
   }
   revised_template_json_list = set_dummy_parameter_setting(updated_template_json_list)
-  template_JSON = jsonlite::toJSON(template_list,pretty=TRUE)
+  template_JSON = jsonlite::toJSON(revised_template_json_list,pretty=TRUE)
   rlog::log_info(paste("Writing template to",cli_json))
   write(template_JSON,file=cli_json)
   
@@ -491,8 +554,27 @@ for( i in 1:length(pipeline_creation_jsons)){
   # 	Rscript create_cli_templates_from_xml.R --template-json {JSON_TEMPLATE} --parameters-xml {XML_FILE} 
   #```
   create_cli_template_cmd = paste("Rscript create_cli_templates_from_xml.R --template-json",cli_json,"--parameters-xml",xml_file )
+  rlog::log_info(paste("RUNNING:",create_cli_template_cmd))
   create_cli_template_output = system(create_cli_template_cmd,intern = TRUE)
   create_cli_template_output_split = strsplit(create_cli_template_output[length(create_cli_template_output)],"\\s+")[[1]]
+  if(sum(create_cli_template_output_split %in% "PROJECT_ID" ) > 0){
+    create_cli_template_output_split[create_cli_template_output_split %in% "PROJECT_ID"] = ica_auth_list[["--project-id"]]
+  }
+  if(sum(create_cli_template_output_split %in%  "PIPELINE_NAME" ) > 0){
+    create_cli_template_output_split[create_cli_template_output_split %in% "PIPELINE_NAME"] = pipeline_name
+  }
+  if(sum("--x-api-key" ==  create_cli_template_output_split) == 0 & sum("-x" == create_cli_template_output_split) == 0 ){
+    create_cli_template_output_split = c(create_cli_template_output_split,"--x-api-key",ica_auth_list[["--x-api-key"]])
+  }
+  ### adding auto generated pipeline run identifier
+  workflow_run_test = paste("test",pipeline_name,format(Sys.time(), "%d_%m_%y_%H_%M_%S"),sep = "_")
+  keys_to_add = c("--user-reference","--technical-tag","--user-tag","--reference-tag")
+  for(k in 1:length(keys_to_add)){
+    create_cli_template_output_split = c(create_cli_template_output_split,keys_to_add[k],workflow_run_test)
+  }
+  
+  #### adding base ICA url
+  create_cli_template_output_split = c(create_cli_template_output_split,"--server-url",args$base_ica_url)
   cli_commands = c(cli_commands,paste(create_cli_template_output_split,collapse=" ",sep=" "))
 }
 rlog::log_info(paste("Writing out CLI commands to:",output_launch_script))

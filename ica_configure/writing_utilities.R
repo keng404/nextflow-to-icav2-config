@@ -4,13 +4,29 @@ library(stringr)
 ###########
 clean_list <- function(list_to_clean){
   # remove NAs from keys or Values
+  malformed_values = c("NA","{","}")
   list_cleaned = list()
   for(i in 1:length(names(list_to_clean))){
-    if(!is.na(names(list_to_clean)[i]) & !is.na(list_to_clean[[names(list_to_clean)[i]]])){
-      list_cleaned[[names(list_to_clean)[i]]] = list_to_clean[[names(list_to_clean)[i]]]
+    key_name = names(list_to_clean)[i]
+    if(grepl("\\|",key_name)){
+      if(!grepl("'",key_name)){
+        key_name = paste("'",key_name,"'",sep="")
+        rlog::log_info(paste("Modified original key name:",names(list_to_clean)[i] ,"to",key_name))
+      }
+    }
+    if(!is.na(key_name) & !is.na(list_to_clean[[key_name]]) & sum(list_to_clean[[key_name]] %in% malformed_values) == 0){
+      list_cleaned[[key_name]] = list_to_clean[[key_name]]
+    } else if(!is.na(key_name) & sum(list_to_clean[[key_name]] %in% malformed_values) > 0){
+      key_remove = key_name
+      key_remove_value  = list_to_clean[[key_name]]
+      rlog::log_warn(paste("Not including Key:",key_remove,"Value:",key_remove_value))
+    } else if(key_name == "NA"){
+      key_remove = key_name
+      key_remove_value  = list_to_clean[[key_name]]
+      rlog::log_warn(paste("Not including Key:",key_remove,"Value:",key_remove_value))
     } else{
-      key_remove = names(list_to_clean)[i]
-      key_remove_value  = list_to_clean[[names(list_to_clean)[i]]]
+      key_remove = key_name
+      key_remove_value  = list_to_clean[[key_name]]
       rlog::log_warn(paste("Not including Key:",key_remove,"Value:",key_remove_value))
     }
   }
