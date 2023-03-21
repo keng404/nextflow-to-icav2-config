@@ -42,9 +42,10 @@ parameters_to_list <- function(parameter_xml){
         } else{
           parameter_list[[parameter_name]][["type"]] = NULL
         }
+       # rlog::log_info(paste("type_boolean:",parameter_list[[parameter_name]][["type"]]))
         parameter_list[[parameter_name]][["minValue"]] = param_setting[["parameter"]][[".attrs"]][["minValues"]]
         parameter_list[[parameter_name]][["maxValue"]] = param_setting[["parameter"]][[".attrs"]][["maxValues"]]
-        if(!is.null(param_setting[["parameter"]][["value"]])){
+        if(!is.null(param_setting[["parameter"]][["value"]]) & param_setting[["parameter"]][["value"]] != "null"){
           rlog::log_info(paste("Found default value",param_setting[["parameter"]][["value"]] ))
           parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][["value"]] 
         } else if(parameter_attributes[type_boolean] == "optionsType" & "value" %in% names(param_setting[["parameter"]])){
@@ -134,17 +135,18 @@ cli_preview <- function(json_template,workflow_language){
       if("value" %in% names(json_template_data[[cli_prefix]][[key_name]])){
         key_value = json_template_data[[cli_prefix]][[key_name]][["value"]]
       }
-      if(length(key_value) > 0 ){
+      if(length(key_value) > 1 ){
         key_value = paste(key_value,sep=",",collapse=",")
       }
       rlog::log_info(paste("KEY_VALUE:",key_value,"KEY_NAME:",key_name))
       if(key_value == "STRINGS" & cli_prefix == "input"){
         key_value = "DATA_ID1,DATA_ID2,...,DATA_IDxx"
       } 
-      if(key_value == "test" & key_name == "outdir"){
+      if(key_name == "outdir"){
         key_value = "out"
       }
       string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
+      #rlog::log_info(paste("ADDING:",string_to_add))
       cli_interstitial = c(cli_interstitial,string_to_add)
     }
   }

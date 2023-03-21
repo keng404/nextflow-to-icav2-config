@@ -363,12 +363,14 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   spreadsheet_header = names(input_schema_json[["items"]][["properties"]])
   field_metadata = input_schema[["items"]][["properties"]]
   fields_assumed = c("sample","fastq_1","fastq_2")
+  data_types_assumed = c("fastq","bam","vcf")
+  found_data_types_assumed = apply(t(data_types_assumed),2, function(x) sum(grepl(x,spreadsheet_header,ignore.case=T)) > 0)
   cols_to_add = c()
   if(sum(!spreadsheet_header %in% fields_assumed) > 0){
     cols_to_add = spreadsheet_header[!spreadsheet_header %in% fields_assumed]
     cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]]]
   }
-  if(sum(spreadsheet_header %in% fields_assumed) > 1){
+  if(sum(spreadsheet_header %in% fields_assumed) > 1 & sum(found_data_types_assumed) > 0 ) {
   spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
   spreadsheet_lines = c()
   # assume paired-end
@@ -427,7 +429,9 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   samplesheet_id = uploadFile(local_path = paste(pipeline_name,".input.csv",sep=""),destination_path = destination_path,ica_auth_list = ica_auth_list)
   } else{
     rlog::log_warn(paste("Currently only able to generate FASTQ-based samplesheets"))
-    rlog::log_warn(paste("I see",paste(spreadsheet_header,sep=",")))
+    rlog::log_warn(paste("I see",paste(spreadsheet_header,sep=",",collapse=",")))
+    rlog::log_warn(paste(data_types_assumed,sep=",",collapse=","))
+    rlog::log_warn(paste(found_data_types_assumed,sep=",",collapse=","))
     samplesheet_id = NULL
   }
   return(samplesheet_id)
@@ -444,7 +448,7 @@ fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_t
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
     
   } else{
-    json_template1[["parameters"]][["input"]][["value"]] = input_spreadsheet
+    json_template1[["parameters"]][["input"]][["value"]] =  paste(pipeline_name,".input.csv",sep="")
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,input_spreadsheet,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
   }
@@ -501,7 +505,7 @@ for( i in 1:length(pipeline_creation_jsons)){
   pipeline_id = created_pipeline_metadata[["id"]]
   workflow_version = created_pipeline_metadata[["languageVersion"]][["name"]]
   pipeline_name_split = strsplit(pipeline_name,"\\_")[[1]]
-  pipeline_alias_bool = !grepl("test|^v|pipeline",pipeline_name_split,ignore.case=TRUE)
+  pipeline_alias_bool = !grepl("test|pipeline",pipeline_name_split,ignore.case=TRUE)
   if(sum(pipeline_alias_bool) == 0 ){
     stop(paste("Cannot find pipeline alias for:",pipeline_name))
   } else{
@@ -542,7 +546,7 @@ for( i in 1:length(pipeline_creation_jsons)){
     updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,input_spreadsheet=samplesheet,ica_auth_list = ica_auth_list)
   } else if(length(json_of_interest) == 0){
     rlog::log_info(paste("No schema_input.json for:",basename(pipeline_dir)))
-    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_datasett=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
+    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
   }
   revised_template_json_list = set_dummy_parameter_setting(updated_template_json_list)
   template_JSON = jsonlite::toJSON(revised_template_json_list,pretty=TRUE)
@@ -557,6 +561,8 @@ for( i in 1:length(pipeline_creation_jsons)){
   rlog::log_info(paste("RUNNING:",create_cli_template_cmd))
   create_cli_template_output = system(create_cli_template_cmd,intern = TRUE)
   create_cli_template_output_split = strsplit(create_cli_template_output[length(create_cli_template_output)],"\\s+")[[1]]
+  first_idx = (1:length(create_cli_template_output_split))[create_cli_template_output_split %in% "icav2"][1]
+  create_cli_template_output_split = create_cli_template_output_split[first_idx:length(create_cli_template_output_split)]
   if(sum(create_cli_template_output_split %in% "PROJECT_ID" ) > 0){
     create_cli_template_output_split[create_cli_template_output_split %in% "PROJECT_ID"] = ica_auth_list[["--project-id"]]
   }
