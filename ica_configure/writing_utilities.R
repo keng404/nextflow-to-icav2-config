@@ -8,11 +8,20 @@ clean_list <- function(list_to_clean){
   list_cleaned = list()
   for(i in 1:length(names(list_to_clean))){
     key_name = names(list_to_clean)[i]
-    if(grepl("\\|",key_name)){
-      if(!grepl("'",key_name)){
-        key_name = paste("'",key_name,"'",sep="")
-        rlog::log_info(paste("Modified original key name:",names(list_to_clean)[i] ,"to",key_name))
-        list_cleaned[[key_name]] = list_to_clean[[names(list_to_clean)[i]]]
+    key_name_split = strsplit(key_name,"\\:")[[1]]
+    if(length(key_name_split) > 1){
+      if(key_name_split[2] == "NA"){
+        key_remove = key_name
+        key_remove_value  = list_to_clean[[key_name]]
+        rlog::log_warn(paste("Not including Key:",key_remove,"Value:",key_remove_value))
+      } else if(grepl("\\|",key_name)){
+          if(!grepl("'",key_name)){
+            key_name = paste(key_name_split[1],":",paste("'",key_name_split[2],"'",sep=""),sep="")
+            rlog::log_info(paste("Modified original key name:",names(list_to_clean)[i] ,"to",key_name))
+            list_cleaned[[key_name]] = list_to_clean[[names(list_to_clean)[i]]]
+          }
+      } else{
+        list_cleaned[[key_name]] = list_to_clean[[key_name]]
       }
     } else if(!is.na(key_name) & !is.na(list_to_clean[[key_name]]) & sum(list_to_clean[[key_name]] %in% malformed_values) == 0){
       list_cleaned[[key_name]] = list_to_clean[[key_name]]

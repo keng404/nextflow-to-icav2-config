@@ -258,12 +258,16 @@ config_file_of_interest <- function(config_file){
     if(sum("genome" %in% line_split) > 0){
       found_genome = TRUE
     }
+    if(sum("genomes" %in% line_split) > 0){
+      found_genome = TRUE
+    }
   }
   if(found_genome & found_params){
     interesting_file = TRUE
   }
   return(interesting_file) 
 }
+rlog::log_info(paste(output_file,config_file_of_interest(output_file)))
 if(config_file_of_interest(output_file)){
   params_list = parse_json(converted_file=output_file)
   if(is.null(params_list)){

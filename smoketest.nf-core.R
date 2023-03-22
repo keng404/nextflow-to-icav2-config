@@ -327,19 +327,25 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
   #adding_cols  = c()
   for(i in 1:length(cols_to_add)){
     col_to_add = cols_to_add[i]
-    col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% cols_to_add]
+    col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% col_to_add]
     if(sum("enum" %in% names(field_metadata[[col_to_add]]))){
       add_col = rep(field_metadata[[col_to_add]][["enum"]][1],nrow(spreadsheet_lines))
     } else{
-      if(field_metadata[[col_to_add]][["type"]] == "integer"){
-        add_col = 1:nrow(spreadsheet_lines)
+      if(sum("type" %in% names(field_metadata[[col_to_add]])) > 0 ){
+        if(field_metadata[[col_to_add]][["type"]] == "integer"){
+          add_col = 1:nrow(spreadsheet_lines)
+        } else{
+          add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
+        }
       } else{
-        add_col = paste("group",1:nrow(spreadsheet_lines),sep="")
+        add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
       }
     }
     # shuffle columns according to header and column we intend to add
     if(col_idx > 1 & col_idx < length(full_spreadsheet_header)){
-      spreadsheet_lines = cbind(spreadsheet_lines[,1:(col_idx-1)],add_col,spreadsheet_lines[,col_idx:length(full_spreadsheet_header)])
+      rlog::log_info(paste("COL_IDX:",col_idx))
+      rlog::log_info(dim(spreadsheet_lines))
+      spreadsheet_lines = cbind(spreadsheet_lines[,1:(col_idx-1)],add_col,spreadsheet_lines[,col_idx:ncol(spreadsheet_lines)])
       #$full_spreadsheet_header = c(full_spreadsheet_header[1:(col_idx-1)],col_to_add,full_spreadsheet_header[col_idx:length(full_spreadsheet_header)])
     } else if(col_idx == 1){
       spreadsheet_lines = cbind(add_col,spreadsheet_lines)
@@ -363,12 +369,13 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   spreadsheet_header = names(input_schema_json[["items"]][["properties"]])
   field_metadata = input_schema[["items"]][["properties"]]
   fields_assumed = c("sample","fastq_1","fastq_2")
+  other_fields_of_interest = c("lane")
   data_types_assumed = c("fastq","bam","vcf")
   found_data_types_assumed = apply(t(data_types_assumed),2, function(x) sum(grepl(x,spreadsheet_header,ignore.case=T)) > 0)
   cols_to_add = c()
   if(sum(!spreadsheet_header %in% fields_assumed) > 0){
     cols_to_add = spreadsheet_header[!spreadsheet_header %in% fields_assumed]
-    cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]]]
+    cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]] | cols_to_add %in% other_fields_of_interest]
   }
   if(sum(spreadsheet_header %in% fields_assumed) > 1 & sum(found_data_types_assumed) > 0 ) {
   spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
@@ -410,6 +417,9 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   if(length(cols_to_add) >0){
     print(cols_to_add)
     spreadsheet_lines = create_dummy_columns(cols_to_add,field_metadata,spreadsheet_lines,spreadsheet_header)
+  } else{
+    spreadsheet_lines = as.data.frame(spreadsheet_lines)
+    colnames(spreadsheet_lines) = spreadsheet_header
   } 
   spreadsheet_lines = as.data.frame(spreadsheet_lines)
   #colnames(spreadsheet_lines) = spreadsheet_header
@@ -487,6 +497,9 @@ set_dummy_parameter_setting <- function(pipeline_settings){
       } else if(param_type == "optionsType"){
         rlog::log_warn(paste("Not sure how to set options_type type: Check XML for",params_to_check[i]))
       }
+      pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]] = default_value
+    } else if(grepl("email",params_to_check[i])){
+      default_value = "foobar@gmail.com"
       pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]] = default_value
     }
   }
@@ -578,7 +591,9 @@ for( i in 1:length(pipeline_creation_jsons)){
   for(k in 1:length(keys_to_add)){
     create_cli_template_output_split = c(create_cli_template_output_split,keys_to_add[k],workflow_run_test)
   }
-  
+  if(sum(create_cli_template_output_split %in%  "STRING" ) > 0){
+    create_cli_template_output_split[create_cli_template_output_split %in% "STRING"] = "TEST"
+  }
   #### adding base ICA url
   create_cli_template_output_split = c(create_cli_template_output_split,"--server-url",args$base_ica_url)
   cli_commands = c(cli_commands,paste(create_cli_template_output_split,collapse=" ",sep=" "))
