@@ -233,7 +233,8 @@ add_genome_to_parameters_list <- function(keys_to_add,xml_file){
       newXMLNode("option",keys_to_add[lv],parent=options_node)
     }
   }
-  newXMLNode("value",NULL,parent=nested_parameter_node)
+  # default params.genome to be first key in params.genome object
+  newXMLNode("value",keys_to_add[1],parent=nested_parameter_node)
   outputPath = gsub(".xml$",".updated.xml",xml_file)
   #rlog::log_info(paste("Updating parameters XML here:",outputPath))
   #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'

@@ -145,6 +145,9 @@ cli_preview <- function(json_template,workflow_language){
       if(key_name == "outdir"){
         key_value = "out"
       }
+      if(grepl("\\.|\\-",key_value)){
+        key_value = paste("'",key_value,"'",sep="")
+      }
       string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
       #rlog::log_info(paste("ADDING:",string_to_add))
       cli_interstitial = c(cli_interstitial,string_to_add)
