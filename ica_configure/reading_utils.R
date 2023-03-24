@@ -67,7 +67,12 @@ get_params_from_config <- function(conf_file,conf_data = NULL){
               nested_param_key = nested_param_key[!grepl("\\{",nested_param_key)]
               rlog::log_info(paste("initial_nested_param:",initial_nested_param,"\t","nested_param_key:",nested_param_key))
             } else{
-              rlog::log_info(paste("IGNORE_PARAM_LINE:",conf_data[i,]))
+              if(in_params_closure){
+                rlog::log_info(paste("RESCUE_LINE:",conf_data[i,]))
+                lines_to_keep = c(lines_to_keep,conf_data[i,])
+              } else{
+                rlog::log_info(paste("IGNORE_PARAM_LINE:",conf_data[i,]))
+              }
             }
           }
         }

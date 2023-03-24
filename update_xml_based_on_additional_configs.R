@@ -233,7 +233,7 @@ rlog::log_info(paste("CONFIGS_TO_IGNORE:",configs_to_ignore))
 if(length(configs_to_ignore) > 0 && !is.null(z1)){
   z1 = z1[ !(z1 %in% configs_to_ignore)]
 }
-rlog::log_info(paste("CONFIGS_FOUND:",z1))
+rlog::log_info(paste("CONFIGS_FOUND:",z1,collapse=","))
 final_config_list = c()
 if(length(z1) > 0){
   params_to_fill = sum(apply(t(z1),2,function(x) grepl("\\$\\{",x)))
@@ -284,15 +284,33 @@ find_other_configs <- function(config_url){
   return(additional_configs)
 }
 
+#########
+valid_url <- function(url_in,t=2){
+  con <- url(url_in)
+  check <- suppressWarnings(try(open.connection(con,open="rt",timeout=t),silent=T)[1])
+  suppressWarnings(try(close.connection(con),silent=T))
+  ifelse(is.null(check),TRUE,FALSE)
+}
 #####################
 if(length(final_config_list) > 0 ){
   final_config_list1 = c()
   for(config_idx in 1:length(final_config_list)){
-    additional_configs = find_other_configs(final_config_list[config_idx])
-    if(length(additional_configs) > 0){
-      final_config_list1 = c(final_config_list1,additional_configs)
+    rlog::log_info(paste("LOOKING at:",final_config_list[config_idx]))
+    is_valid_url = FALSE
+    if(grepl("http",final_config_list[config_idx]) | grepl("ftp",final_config_list[config_idx])){
+      is_valid_url = valid_url(url_in=c(final_config_list[config_idx]))
     } else{
       final_config_list1 = c(final_config_list1,final_config_list[config_idx])
+    }
+    if(is_valid_url){
+      additional_configs = find_other_configs(final_config_list[config_idx])
+      if(length(additional_configs) > 0){
+        final_config_list1 = c(final_config_list1,additional_configs)
+      } else{
+        final_config_list1 = c(final_config_list1,final_config_list[config_idx])
+      }
+    } else{
+      rlog::log_warn(paste(final_config_list[config_idx],"may not be valid URL"))
     }
   }
   final_config_list = final_config_list1

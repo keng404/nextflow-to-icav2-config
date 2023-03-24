@@ -465,7 +465,7 @@ if(args$create_pipeline_in_ica){
             system(run_cmd)
           }
         } else{
-        rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",nextflow_scripts[[scripts_to_create[l]]])))
+        rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".nf",nextflow_scripts[[scripts_to_create[l]]])))
         }
       } else{
         xml_files = list.files(dirname(dsl2_nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
@@ -499,7 +499,7 @@ if(args$create_pipeline_in_ica){
             system(run_cmd)
           } 
         } else{
-          rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".ica.dev.nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
+          rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
         }
       }
     }

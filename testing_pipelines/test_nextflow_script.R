@@ -41,7 +41,8 @@ docker_result = system(docker_cmd,intern = TRUE)
 docker_command_error <- function(cmd_out){
   error_in_output = FALSE
   error_in_line = apply(t(cmd_out),2,function(x) grepl("error|groovy|fail",x,ignore.case = TRUE))
-  if(sum(error_in_line) > 0){
+  please_in_line = apply(t(cmd_out),2,function(x) grepl("please",x,ignore.case = TRUE))
+  if(sum(error_in_line) > 0 & sum(please_in_line) == 0){
     error_in_output = TRUE
   }
   return(error_in_output)

@@ -980,8 +980,10 @@ absolute_path_update_module <- function(module_file){
   updated_lines = module_file_data
   paths_of_interest = names(scripts_to_absolute_path)
   found_updates = FALSE
+  rows_to_remove = c()
   for(idx in 1:nrow(module_file_data)){
     found_update = FALSE
+    remove_line = FALSE
     module_line = module_file_data[idx,]
     module_line = gsub("\'","",module_line)
     module_line_split = strsplit(module_line,"\\s+")[[1]]
@@ -1008,6 +1010,10 @@ absolute_path_update_module <- function(module_file){
             replacement_value = override_nextflow_script_command(basename_path_lookup,replacement_value)
             module_line_split[module_line_split %in% basename_path_lookup] = replacement_value
           }
+        } else if(sum(apply(t(module_line_split),2,function(x) grepl("executor",x)))>0 & sum(apply(t(module_line_split),2,function(x) grepl("local",x)))>0){
+          found_update = TRUE
+          found_updates = TRUE
+          remove_line = TRUE
         }
       }
     }
@@ -1030,13 +1036,21 @@ absolute_path_update_module <- function(module_file){
         module_line_split = paste(module_line_split[1],paste("'",basename(module_line_split[2:length(module_line_split)]),"'",sep=""))
         module_line_split = paste(module_line_split,collapse = " ", sep = " ")
       }
-      new_line = paste(module_line_split,collapse = " ",sep = " ")
-      rlog::log_info(paste("UPDATING PATH in this line:",new_line))
-      updated_lines[idx,] = new_line
+      if(!remove_line){
+        new_line = paste(module_line_split,collapse = " ",sep = " ")
+        rlog::log_info(paste("UPDATING PATH in this line:",new_line))
+        updated_lines[idx,] = new_line
+      } else{
+        rlog::log_warn(paste("REMOVING LINE:", paste(module_line_split,collapse = " ",sep = " ")))
+        rows_to_remove = c(rows_to_remove,idx)
+      }
     } 
   }
   if(found_updates){
     output_file = paste(module_file,".tmp",sep="")
+    if(length(rows_to_remove) > 0){
+      updated_lines = updated_lines[-rows_to_remove,]
+    }
     write.table(updated_lines,output_file,row.names=F,col.names = F,quote=F,sep="\n")
     rlog::log_info(paste("UPDATING:",module_file))
     system(paste("mv",output_file,module_file))

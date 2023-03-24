@@ -145,7 +145,7 @@ cli_preview <- function(json_template,workflow_language){
       if(key_name == "outdir"){
         key_value = "out"
       }
-      if(grepl("\\.|\\-",key_value)){
+      if(grepl("\\.|\\-",key_value) & !grepl("fil",key_value) & !grepl("fol",key_value) & !grepl("'",key_value)){
         key_value = paste("'",key_value,"'",sep="")
       }
       string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")

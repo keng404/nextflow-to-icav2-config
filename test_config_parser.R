@@ -22,6 +22,7 @@ config_file = args$config_file
 output_file = args$output_file
 parameter_xml_file = args$parameters_xml
 if(!is.null(config_url)){
+    print(config_url)
     test_doc = rvest::read_html(config_url,encoding = "ISO-8859-1")
     test_content = strsplit(rvest::html_text(test_doc),"\n")[[1]]
 } else if(!is.null(config_file)){

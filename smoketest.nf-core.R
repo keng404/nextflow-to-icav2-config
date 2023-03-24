@@ -330,10 +330,16 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
     col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% col_to_add]
     if(sum("enum" %in% names(field_metadata[[col_to_add]]))){
       add_col = rep(field_metadata[[col_to_add]][["enum"]][1],nrow(spreadsheet_lines))
+    } else if(sum("anyOf" %in% names(field_metadata[[col_to_add]])) > 0 ){
+      pattern_of_interest = field_metadata[[col_to_add]][["anyOf"]][["pattern"]]
+      vals_of_interest = stringr::str_extract(pattern_of_interest,"\\([^()]+\\)")[[1]]
+      vals_of_interest = gsub("\\(|\\)","",vals_of_interest)
+      vals_of_interest_split = strsplit(vals_of_interest,"\\|")[[1]]
+      add_col = rep(vals_of_interest_split[1],nrow(spreadsheet_lines))
     } else{
       if(sum("type" %in% names(field_metadata[[col_to_add]])) > 0 ){
         if(field_metadata[[col_to_add]][["type"]] == "integer"){
-          add_col = 1:nrow(spreadsheet_lines)
+          add_col = rep(1,1:nrow(spreadsheet_lines))
         } else{
           add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
         }

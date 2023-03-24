@@ -297,13 +297,23 @@ if(length(step_configurations)>0){
       parameter_metadata[["description"]] = gsub("\n$","",parameter_metadata[["description"]])
       newXMLNode("description",parameter_metadata[["description"]],parent=nested_parameter_node)
       #### adding options if a list of values are provided
+      default_override = FALSE
       if("list" %in% names(parameter_metadata)){
         list_vals = parameter_metadata[["list"]]
+        apply_integer_workaround = apply(t(list_vals),2,strtoi)
+        if(sum(is.na(apply_integer_workaround)) == 0 ){
+          newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
+          newXMLNode("value",list_vals[1],parent=nested_parameter_node)
+          default_override = TRUE
+        } else{
         if(length(list_vals) > 0){
-          options_node = newXMLNode(paste("optionsType"),parent=nested_parameter_node)
-          for(lv in 1:length(list_vals)){
-            newXMLNode("option",list_vals[lv],parent=options_node)
+            options_node = newXMLNode(paste("optionsType"),parent=nested_parameter_node)
+            for(lv in 1:length(list_vals)){
+              newXMLNode("option",list_vals[lv],parent=options_node)
+            }
           }
+          newXMLNode("value",list_vals[1],parent=nested_parameter_node)
+          default_override = TRUE
         }
       } else{
         if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
@@ -330,7 +340,9 @@ if(length(step_configurations)>0){
           }
           parameter_metadata[["default"]] = dummy_value
         }
-        newXMLNode("value",parameter_metadata[["default"]],parent=nested_parameter_node)
+        if(!default_override){
+          newXMLNode("value",parameter_metadata[["default"]],parent=nested_parameter_node)
+        }
       } else{
         dummy_value = ""
         if(parameter_metadata[["type"]] == "boolean"){
@@ -340,7 +352,9 @@ if(length(step_configurations)>0){
         } else{
           dummy_value = "null"
         }
-        newXMLNode("value",dummy_value,parent=nested_parameter_node)
+        if(!default_override){
+          newXMLNode("value",dummy_value,parent=nested_parameter_node)
+        }
       }
     }
   }
