@@ -339,7 +339,7 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
     } else{
       if(sum("type" %in% names(field_metadata[[col_to_add]])) > 0 ){
         if(field_metadata[[col_to_add]][["type"]] == "integer"){
-          add_col = rep(1,1:nrow(spreadsheet_lines))
+          add_col = rep(1,nrow(spreadsheet_lines))
         } else{
           add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
         }

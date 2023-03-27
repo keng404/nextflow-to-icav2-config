@@ -87,6 +87,21 @@ if(args$create_pipeline_in_ica){
   api_key_file = args$api_key_file
   ica_project_name = args$ica_project_name
 }
+#########
+timestamp_diff_good <- function(pipeline_object,timestamp_cutoff=180){
+  releases_good = c()
+  for(i in 1:length(pipeline_object)){
+    diff_in_s = as.integer(as.POSIXct( Sys.time() )) -  pipeline_object[[i]]$published_at_timestamp
+    diff_in_days = diff_in_s/(60*60*24)
+    if(diff_in_days >= timestamp_cutoff){
+      releases_good = c(releases_good,TRUE)
+    } else{
+      releases_good = c(releases_good,FALSE)
+    }
+  }
+  return(releases_good)
+}
+##################
 if(!is.null(input_json)){
   pipeline_metadata = rjson::fromJSON(file=input_json)
   
@@ -98,7 +113,24 @@ if(!is.null(input_json)){
     if(length(pipeline_metadata$remote_workflows[[i]][["releases"]]) > 0 ){
       pipeline_name = pipeline_metadata$remote_workflows[[i]][["name"]]
       pipeline_github_link = pipeline_metadata$remote_workflows[[i]][["full_name"]]
-      pipeline_branch = pipeline_metadata$remote_workflows[[i]][["releases"]][[length(pipeline_releases)]]$tag_name
+      ##################################
+      recent_release = timestamp_diff_good(pipeline_object = pipeline_metadata$remote_workflows[[i]][["releases"]])
+      if(sum(recent_release) > 0){
+        number_of_releases = (1:length(recent_release))[recent_release == TRUE]
+        number_of_releases = number_of_releases[length(number_of_releases)]
+          # sorted by release date . the larger the number, the more recent the release
+        if(number_of_releases > 1){
+          release_number = number_of_releases -1
+        } else{
+          # or pick oldest
+          release_number = 1
+        }
+      } else{
+        # if I can't determine most recent release, pick earliest created
+        release_number = 1
+      }
+      ########################
+      pipeline_branch = pipeline_metadata$remote_workflows[[i]][["releases"]][[release_number]]$tag_name
       pipeline_description =  pipeline_metadata$remote_workflows[[i]][["description"]]
       pipeline_tags  =  pipeline_metadata$remote_workflows[[i]][["topics"]]
       nf_pipeline_metadata = list()
