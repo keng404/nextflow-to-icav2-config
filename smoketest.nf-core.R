@@ -113,6 +113,23 @@ parse_json <- function(json_file){
   return(out)
 }
 ###########
+#####
+getICAFilePath <- function(file_id,ica_auth_list = ica_auth_list){
+  ica_file_path = NULL
+  base_cmd = "icav2 projectdata get "
+  base_cmd = paste(base_cmd,file_id)
+  keys_of_interest  = names(ica_auth_list)
+  for(key in 1:length(keys_of_interest)){
+    key_of_interest = keys_of_interest[key]
+    base_cmd = paste(base_cmd,key_of_interest,ica_auth_list[[key_of_interest]],sep = " ",collapse = " ")
+  }
+  base_cmd = paste(base_cmd," -o json > findfile.json")
+  rlog::log_info(paste('RUNNING_FIND_PATH:',base_cmd))
+  system(base_cmd)
+  findfile_out = rjson::fromJSON(file="findfile.json")
+  ica_file_path = findfile_out$details$path
+  return(ica_file_path)
+}
 getDatas <- function(pipeline_code_name,data_type,ica_auth_list = ica_auth_list){
   pipeline_name = NULL
   data_types = c("FOLDER","FILE")
@@ -329,7 +346,8 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
     col_to_add = cols_to_add[i]
     col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% col_to_add]
     if(sum("enum" %in% names(field_metadata[[col_to_add]]))){
-      add_col = rep(field_metadata[[col_to_add]][["enum"]][1],nrow(spreadsheet_lines))
+      possible_enums = field_metadata[[col_to_add]][["enum"]]
+      add_col = rep(possible_enums[length(possible_enums)],nrow(spreadsheet_lines))
     } else if(sum("anyOf" %in% names(field_metadata[[col_to_add]])) > 0 ){
       pattern_of_interest = field_metadata[[col_to_add]][["anyOf"]][["pattern"]]
       vals_of_interest = stringr::str_extract(pattern_of_interest,"\\([^()]+\\)")[[1]]
@@ -400,7 +418,9 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
     rlog::log_info(paste("r2_group:",paste(r2_group,sep=", ",collapse=", ")))
     if(sum(r1_group) > 0 & sum(r2_group) > 0){
       r1_group_files = files_of_interest[r1_group]
+      r1_group_files = apply(t(r1_group_files),2,basename)
       r2_group_files = files_of_interest[r2_group]
+      r2_group_files = apply(t(r2_group_files),2,basename)
       rlog::log_info(paste("r1_group_files:",paste(r1_group_files,sep=", ",collapse=", ")))
       rlog::log_info(paste("r2_group_files:",paste(r2_group_files,sep=", ",collapse=", ")))
       for(j in 1:length(r1_group_files)){
@@ -408,12 +428,14 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
       }
     } else if(sum(r1_group) > 0 & sum(r2_group) == 0){
       r1_group_files = files_of_interest[r1_group]
+      r1_group_files = apply(t(r1_group_files),2,basename)
       rlog::log_info(paste("r1_group_files:",paste(r1_group_files,sep=", ",collapse=", ")))
       for(j in 1:length(r1_group_files)){
         spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,r1_group_files[j]))
       }
     } else{
       rlog::log_error(paste("Cannot find R1 or R2 groups for these files:",files_of_interest))
+      files_of_interest = apply(t(files_of_interest),2,basename)
       for(j in 1:length(files_of_interest)){
         spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,files_of_interest[j]))
       }
@@ -442,7 +464,152 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
       rlog::log_warn(paste("Not sure if we could delete existing file on ICA:",destination_path))
     }
   }
-  samplesheet_id = uploadFile(local_path = paste(pipeline_name,".input.csv",sep=""),destination_path = destination_path,ica_auth_list = ica_auth_list)
+  num_retries = 2
+  num_tries = 0
+  while(num_tries < num_retries){
+    samplesheet_id = uploadFile(local_path = paste(pipeline_name,".input.csv",sep=""),destination_path = destination_path,ica_auth_list = ica_auth_list)
+    if(!is.null(samplesheet_id)){
+      num_tries = num_retries
+    }  else{
+      num_tries = num_tries + 1
+      Sys.sleep(num_tries * 10)
+    }
+  }
+  } else{
+    rlog::log_warn(paste("Currently only able to generate FASTQ-based samplesheets"))
+    rlog::log_warn(paste("I see",paste(spreadsheet_header,sep=",",collapse=",")))
+    rlog::log_warn(paste(data_types_assumed,sep=",",collapse=","))
+    rlog::log_warn(paste(found_data_types_assumed,sep=",",collapse=","))
+    samplesheet_id = NULL
+  }
+  return(samplesheet_id)
+}
+
+#demodataset_list = get_demo_dataset("atacseq",nfcore_manifest_bundle=nfcore_bundle_info,demo_dataset_bundle=demo_data_manifest)
+create_dummy_spreadsheet_no_json <- function(pipeline_name,template_files,demo_dataset){
+  samplesheet_id = NULL
+  fields_assumed = c("sample","fastq_1","fastq_2")
+  other_fields_of_interest = c("lane")
+  data_types_assumed = c("fastq","bam","vcf")
+  delimitter = ","
+  template_file_ext = ".input.csv"
+  if(grepl(".tsv$",template_files[1])){
+    delimitter = "\t"
+    template_file_ext = ".input.tsv"
+  }
+  # create spreadsheet
+  spreadsheet_header = c()
+  field_metadata = list()
+  for(i in 1:length(template_files)){
+    rlog::log_info(paste("READING in template_file :",template_files[i]))
+    template_dat = as.matrix(read.delim(template_files[i],sep=delimitter))
+    if(length(spreadsheet_header) >0){
+      fields_to_add = colnames(template_dat)[!colnames(template_dat) %in% spreadsheet_header]
+    } else{
+      fields_to_add = colnames(template_dat)
+    }
+    if(length(fields_to_add) >0){
+      fields_to_add = fields_to_add[!is.na(fields_to_add)]
+      rlog::log_info(paste("ADDING cols to template:",paste(fields_to_add,collpase=", ",sep=", "),collapse=", "))
+      for(j in 1:length(fields_to_add)){
+        field_metadata[[fields_to_add[j]]] = list()
+        field_type = "string"
+        col_idx = (1:length(colnames(template_dat)))[colnames(template_dat) == fields_to_add[j]]
+        is_integer_column = apply(t(template_dat[,col_idx]),2,function(x) strtoi(x))
+        if(sum(is.na(is_integer_column)) == 0){
+          field_type = "integer"
+        }
+        field_metadata[[fields_to_add[j]]][["type"]] = field_type
+        unique_template_vals = unique(t(template_dat[,col_idx]))
+        if(length(unique_template_vals) >= 2 & sum(fields_to_add[j] %in% c(fields_assumed,other_fields_of_interest)) == 0){
+          field_metadata[[fields_to_add[j]]][["enum"]] = unique_template_vals
+        }
+      }
+      spreadsheet_header = c(spreadsheet_header, fields_to_add)
+    } else{
+      rlog::log_info(paste("No additional columns to add"))
+    }
+  }
+  found_data_types_assumed = apply(t(data_types_assumed),2, function(x) sum(grepl(x,spreadsheet_header,ignore.case=T)) > 0)
+  cols_to_add = c()
+  if(sum(!spreadsheet_header %in% fields_assumed) > 0){
+    cols_to_add = spreadsheet_header[!spreadsheet_header %in% fields_assumed]
+  }
+  if(sum(spreadsheet_header %in% fields_assumed) > 1 | sum(found_data_types_assumed) > 0 ) {
+    spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
+    spreadsheet_lines = c()
+    # assume paired-end
+    demo_files = apply(t(demo_dataset[["filenames"]]),2,basename)
+    sample_ids = apply(t(demo_files),2,function(x){ x1=strsplit(x,"\\.")[[1]]; x2=strsplit(x1[1],"\\_")[[1]][1]; return(x2)})
+    sample_ids_of_interest = unique(sample_ids)
+    for(i in 1:length(sample_ids_of_interest)){
+      sample_id_of_interest = sample_ids_of_interest[i]
+      files_of_interest =  demo_files[sample_ids == sample_id_of_interest]
+      rlog::log_info(paste("FILES_OF_INTEREST:",paste(files_of_interest,sep=", ",collapse=", ")))
+      r1_group = apply(t(files_of_interest),2,function(x){ x1=strsplit(basename(x),"\\.")[[1]]; x2=strsplit(x1[1],"\\_")[[1]]; return(sum("r1" %in% x2)>0 | sum("R1" %in% x2)>0)})
+      r2_group = apply(t(files_of_interest),2,function(x){ x1=strsplit(basename(x),"\\.")[[1]]; x2=strsplit(x1[1],"\\_")[[1]]; return(sum("r2" %in% x2)>0 | sum("R2" %in% x2)>0)})
+      rlog::log_info(paste("r1_group:",paste(r1_group,sep=", ",collapse=", ")))
+      rlog::log_info(paste("r2_group:",paste(r2_group,sep=", ",collapse=", ")))
+      if(sum(r1_group) > 0 & sum(r2_group) > 0){
+        r1_group_files = files_of_interest[r1_group]
+        r1_group_files = apply(t(r1_group_files),2,basename)
+        r2_group_files = files_of_interest[r2_group]
+        r2_group_files = apply(t(r2_group_files),2,basename)
+        rlog::log_info(paste("r1_group_files:",paste(r1_group_files,sep=", ",collapse=", ")))
+        rlog::log_info(paste("r2_group_files:",paste(r2_group_files,sep=", ",collapse=", ")))
+        for(j in 1:length(r1_group_files)){
+          spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,r1_group_files[j],r2_group_files[j]))
+        }
+      } else if(sum(r1_group) > 0 & sum(r2_group) == 0){
+        r1_group_files = files_of_interest[r1_group]
+        r1_group_files = apply(t(r1_group_files),2,basename)
+        rlog::log_info(paste("r1_group_files:",paste(r1_group_files,sep=", ",collapse=", ")))
+        for(j in 1:length(r1_group_files)){
+          spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,r1_group_files[j]))
+        }
+      } else{
+        rlog::log_error(paste("Cannot find R1 or R2 groups for these files:",files_of_interest))
+        files_of_interest = apply(t(files_of_interest),2,basename)
+        for(j in 1:length(files_of_interest)){
+          spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,files_of_interest[j]))
+        }
+      }
+    }
+    print(cat(head(spreadsheet_lines)))
+    if(length(cols_to_add) >0){
+      print(cols_to_add)
+      spreadsheet_lines = create_dummy_columns(cols_to_add,field_metadata,spreadsheet_lines,spreadsheet_header)
+    } else{
+      spreadsheet_lines = as.data.frame(spreadsheet_lines)
+      colnames(spreadsheet_lines) = spreadsheet_header
+    } 
+    spreadsheet_lines = as.data.frame(spreadsheet_lines)
+    #colnames(spreadsheet_lines) = spreadsheet_header
+    ### write spreadsheet
+    write.table(spreadsheet_lines,file=paste(pipeline_name,template_file_ext,sep=""),row.names=F,sep=delimitter,quote=F)
+    rlog::log_info(paste("Generated input spreadsheet:",paste(pipeline_name,template_file_ext,sep="")))
+    # upload to ICA
+    project_directory = paste("/",pipeline_name,"_project_dir/",sep="")
+    destination_path = paste(project_directory,paste(pipeline_name,template_file_ext,sep=""),sep="",collapse="")
+    existing_file_id = getFileId(ica_path = destination_path, ica_auth_list = ica_auth_list)
+    if(!is.null(existing_file_id)){
+      delete_status = deleteFile(ica_path = destination_path,ica_auth_list = ica_auth_list)
+      if(delete_status == FALSE){
+        rlog::log_warn(paste("Not sure if we could delete existing file on ICA:",destination_path))
+      }
+    }
+    num_retries = 2
+    num_tries = 0
+    while(num_tries < num_retries){
+      samplesheet_id = uploadFile(local_path =paste(pipeline_name,template_file_ext,sep=""),destination_path = destination_path,ica_auth_list = ica_auth_list)
+      if(!is.null(samplesheet_id)){
+        num_tries = num_retries
+      }  else{
+        num_tries = num_tries + 1
+        Sys.sleep(num_tries * 10)
+      }
+      
+    }
   } else{
     rlog::log_warn(paste("Currently only able to generate FASTQ-based samplesheets"))
     rlog::log_warn(paste("I see",paste(spreadsheet_header,sep=",",collapse=",")))
@@ -459,12 +626,13 @@ fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_t
   # how to get initial files staged within project dir?
   json_template1 = json_template
   if(is.null(input_spreadsheet)){
-    json_template1[["parameters"]][["input"]][["value"]] = "'*{fastq,fg}.gz'"
+    json_template1[["parameters"]][["input"]][["value"]] = "\"*{fastq,fg}.gz\""
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
     
   } else{
-    json_template1[["parameters"]][["input"]][["value"]] =  paste(pipeline_name,".input.csv",sep="")
+    spreadsheet_ica_path = getICAFilePath(file_id = input_spreadsheet,ica_auth_list = ica_auth_list)
+    json_template1[["parameters"]][["input"]][["value"]] =  basename(spreadsheet_ica_path)
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,input_spreadsheet,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
   }
@@ -476,7 +644,9 @@ set_dummy_parameter_setting <- function(pipeline_settings){
   for(i in 1:length(params_to_check)){
     default_value = pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]]
     param_type = pipeline_settings[["parameters"]][[params_to_check[i]]][["type"]]
-    if(is.null(default_value)){
+    if(params_to_check[i] == "input" & (default_value == "null" | default_value == "")){
+      default_value = "\"*{fastq,fg}.gz\""
+    } else if(is.null(default_value)){
       if(param_type == "stringType"){
         default_value = "test"
         if(grepl("email",params_to_check[i])){
@@ -511,7 +681,55 @@ set_dummy_parameter_setting <- function(pipeline_settings){
   }
   return(pipeline_settings)
 }
-
+##########
+check_usage_doc <- function(usage_documentation){
+  usage_list = list()
+  usage_documentation_data = read.delim(usage_documentation,header=F)
+  usage_lines_of_interest = apply(t(usage_documentation_data),2,function(x) grepl("samplesheet",x) | grepl("csv",x) | grepl("tsv",x))
+  line_of_interest = apply(t(usage_documentation_data),2,function(x) grepl("--",x) & grepl("nextflow",x) & grepl("run",x) & !grepl("test",x))
+  if(sum(line_of_interest) > 0){
+    usage_list[["command_line"]] = usage_documentation_data[line_of_interest,][1]
+    usage_list[["params_to_override"]] = list()
+    usage_list[["samplesheet"]] = NULL
+    usage_list[["usage_lines"]] = usage_documentation_data
+    usage_list[["usage_lines_of_interest"]]  =usage_lines_of_interest
+    cli_split = strsplit(usage_list[["command_line"]],"\\s+")[[1]]
+    for(i in 4:length(cli_split)){
+      if(grepl("--",cli_split[i]) | grepl("-",cli_split[i])){
+        val_iof_interest = NULL
+        if(length(cli_split) >= (i+1)){
+          val_of_interest = cli_split[i+1]
+          if(grepl("'",val_of_interest)){
+            usage_list[["params_to_override"]][[cli_split[i]]] = val_of_interest 
+          } else if(grepl("tsv",val_of_interest) | grepl("csv",val_of_interest)){
+            usage_list[["samplesheet"]] = val_of_interest
+          }
+        }
+      }
+    }
+    return(usage_list)
+  } else{
+    return(NULL)
+  }
+}
+################
+create_template_data <- function(usage_lines_to_read){
+  in_console_statement = FALSE
+  template_lines = c()
+  for(i in 1:length(usage_lines_to_read)){
+    if(usage_lines_to_read[i] == "```console"){
+      in_console_statement = TRUE
+       next
+    }
+    if(usage_lines_to_read[i] == "```"){
+      in_console_statement = FALSE
+    }
+    if(in_console_statement){
+      template_lines = rbind(template_lines,usage_lines_to_read[i] )
+    }
+  }
+  return(template_lines)
+}
 ############
 cli_commands = c()
 for( i in 1:length(pipeline_creation_jsons)){
@@ -552,6 +770,10 @@ for( i in 1:length(pipeline_creation_jsons)){
   #parse schema_input.json, understanding if fields are required or not and if there are restricted values (enums) for each field
   #```R
   json_of_interest = list.files(pipeline_dir,pattern="schema_input.json",full.names=TRUE,recursive=TRUE)
+  tsvs_of_interest = list.files(pipeline_dir,pattern="*tsv$",full.names=TRUE,recursive=TRUE)
+  csvs_of_interest = list.files(pipeline_dir,pattern="*csv$",full.names=TRUE,recursive=TRUE)
+  template_files_of_interest = c(tsvs_of_interest,csvs_of_interest)
+  usage_docs = list.files(pipeline_dir,pattern="usage.md",full.names=TRUE,recursive=TRUE)
   demodataset_list = get_demo_dataset(pipeline_alias,nfcore_manifest_bundle=nfcore_bundle_info,demo_dataset_bundle=demo_data_manifest)
   if(length(json_of_interest) > 0){
     json_of_interest = json_of_interest[1]
@@ -563,9 +785,46 @@ for( i in 1:length(pipeline_creation_jsons)){
     #   
     samplesheet = create_dummy_spreadsheet(pipeline_name,input_schema,demodataset_list)
     updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,input_spreadsheet=samplesheet,ica_auth_list = ica_auth_list)
-  } else if(length(json_of_interest) == 0){
-    rlog::log_info(paste("No schema_input.json for:",basename(pipeline_dir)))
-    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
+  } else if(length(json_of_interest) == 0 & length(template_files_of_interest)>0){
+    samplesheet = create_dummy_spreadsheet_no_json(pipeline_name,template_files_of_interest,demodataset_list)
+    updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,input_spreadsheet=samplesheet,ica_auth_list = ica_auth_list)
+    
+  } else{
+    rlog::log_info(paste("No input samplesheet for:",basename(pipeline_dir)))
+    if(length(usage_docs) == 0) {
+      updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
+    } else{
+      test_list = check_usage_doc(usage_docs[1])
+      line_idxs = (1:length(test_list$usage_lines_of_interest))[test_list$usage_lines_of_interest]
+      if(!is.null(test_list[["samplesheet"]])){
+        rlog::log_info(paste("Trying to create template for:",pipeline_name,"based of documentation\n",usage_docs[1]))
+        delimitter = ","
+        new_template = paste(pipeline_name,".",test_list[["samplesheet"]],sep="")
+        if(grepl("tsv",new_template)){
+          delimitter = "\t"
+        }
+        template_data = create_template_data(test_list[["usage_lines"]][line_idxs[3]:line_idxs[4],])
+        if(nrow(template_data) > 0){
+          write.table(template_data,file=new_template,sep=delimitter)
+          template_files_of_interest = c(new_template)
+          samplesheet = create_dummy_spreadsheet_no_json(pipeline_name,template_files_of_interest,demodataset_list)
+          updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,input_spreadsheet=samplesheet,ica_auth_list = ica_auth_list)
+        } else{
+          rlog::log_error(paste("Could not create temoplate for:",pipeline_name,"based of documentation\n",usage_docs[1]))
+          stop()
+        }
+      } else{
+        updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
+      }
+      if(length(test_list[["params_to_override"]]) > 0){
+        add_to_json = test_list[["params_to_override"]]
+        keys_to_add = names(add_to_json)
+        keys_to_add = apply(t(keys_to_add),2,function(x) gsub("-","",x))
+        for(atj in 1:length(keys_to_add)){
+          updated_template_json_list[["parameters"]][[keys_to_add[atj]]] = add_to_json[[keys_to_add[atj]]]
+        }
+      }
+    }
   }
   revised_template_json_list = set_dummy_parameter_setting(updated_template_json_list)
   template_JSON = jsonlite::toJSON(revised_template_json_list,pretty=TRUE)

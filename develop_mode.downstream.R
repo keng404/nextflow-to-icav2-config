@@ -940,6 +940,22 @@ if(sum(pipeline_sub_dirs_of_interest) > 0){
   }
 }
 print(names(scripts_to_absolute_path))
+####
+second_pass_find_executable_language <- function(script){
+  script_filename_split = strsplit(script,"/")[[1]]
+  script_relative_path = paste(script_filename_split[2:length(script_filename_split)],sep="/")
+  # open up script and determine language of interest to run it
+  script_dat = read.delim(script,header=F)
+  header_of_interest = apply(t(script_dat),2,function(x) grepl("#!",x))
+  if(sum(header_of_interest) > 0){
+    lines_of_interest = script_dat[header_of_interest,]
+    line_split = strsplit(lines_of_interest[1],"\\s+")[[1]]
+    return(tolower(line_split[length(line_split)]))
+  } else{
+    return("bash")
+  }
+}
+
 # make sure files are executable
 override_nextflow_script_command <- function(script,associated_cmd){
   execution_choices = list()
@@ -955,7 +971,7 @@ override_nextflow_script_command <- function(script,associated_cmd){
     if(script_file_extension %in% names(execution_choices)){
       updated_cmd = paste(execution_choices[[script_file_extension]],associated_cmd)
     } else{
-      updated_cmd = paste("bash",associated_cmd)
+      updated_cmd = paste(second_pass_find_executable_language(script),associated_cmd)
     }
   } else{
     updated_cmd = paste("\"","\n")
@@ -1041,8 +1057,12 @@ absolute_path_update_module <- function(module_file){
         rlog::log_info(paste("UPDATING PATH in this line:",new_line))
         updated_lines[idx,] = new_line
       } else{
+        # work around to turn local jobs into a kubernetes job
         rlog::log_warn(paste("REMOVING LINE:", paste(module_line_split,collapse = " ",sep = " ")))
-        rows_to_remove = c(rows_to_remove,idx)
+        #new_line = paste("\tcontainer","'nextflow/nextflow:22.04.3'")
+        new_line = paste("\tcpus","2")
+        updated_lines[idx,] = new_line
+        #rows_to_remove = c(rows_to_remove,idx)
       }
     } 
   }

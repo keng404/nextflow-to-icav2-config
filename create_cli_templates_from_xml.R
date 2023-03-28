@@ -50,7 +50,15 @@ parameters_to_list <- function(parameter_xml){
           parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][["value"]] 
         } else if(parameter_attributes[type_boolean] == "optionsType" & "value" %in% names(param_setting[["parameter"]])){
             if((is.null(param_setting[["parameter"]][["value"]]) || param_setting[["parameter"]][["value"]] == "null" )){
-              parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][[parameter_attributes[type_boolean]]][["option"]][1]
+              option_settings = param_setting[["parameter"]][[parameter_attributes[type_boolean]]][["option"]]
+              # default to GRCh38 if possible
+              found_genome_setting = apply(t(option_settings),2,function(x) grepl("GRCh38",x))
+              rlog::log_info(paste("found_genome_setting:",paste(found_genome_setting,sep=", ",collapse=", ")))
+              if(sum(found_genome_setting) == 0){                                                                                                   
+                parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][[parameter_attributes[type_boolean]]][["option"]][1]
+              } else{
+                parameter_list[[parameter_name]][["value"]] = option_settings[found_genome_setting][1]
+              }
             } else{
               parameter_list[[parameter_name]][["value"]] = "STRING"
             }
