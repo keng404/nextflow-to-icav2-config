@@ -40,10 +40,10 @@ json_data = fromJSON(file=nf_params_json)$definitions
 generic_data  = fromJSON(file=nf_params_json)$properties
 parameter_sections = names(json_data)
 rlog::log_info(paste("PARAMETER_SECTIONS:",paste(parameter_sections,collapse=", ")))
+params_to_ignore = c("input_paths","tracedir")
 #####################
 returnParamMetadata <- function(param_configuration){
   param_metadata = list()
-  
   #### parameter type
   if("type" %in% names(param_configuration)){
     param_metadata[["type"]] = param_configuration[["type"]]
@@ -105,6 +105,10 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
     rlog::log_info(paste("Starting to parse",parameter_sections[i],"section"))
     allParams = list()
     param_names = names(param_data[[parameter_sections[i]]][["properties"]])
+    if(sum(params_to_ignore %in% param_names) > 0){
+      #print(!param_names %in% params_to_ignore)
+      param_names = param_names[!param_names %in% params_to_ignore]
+    }
     rlog::log_info(paste("Found", paste(param_names,collapse=", ")))
     if(!isTRUE(include_hidden_parameters) && !(parameter_sections[i] %in% override_list)){
       rlog::log_info(paste("Checking for required parameters"))
@@ -116,7 +120,9 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
     }
     if(!is.null(param_names)){
       for(j in 1:length(param_names)){
+        #print(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]])
         rlog::log_info(paste("Retriving info for parameter",param_names[j]))
+        #print(returnParamMetadata(generic_data[[param_names[j]]]))
         allParams[[param_names[j]]] = returnParamMetadata(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]])
       }
     }
@@ -131,7 +137,7 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
     genericParams = list()
     if(!is.null(param_names)){
       for(j in 1:length(param_names)){
-        rlog::log_info(paste("Retriving info for parameter",param_names[j]))
+        #print(returnParamMetadata(generic_data[[param_names[j]]]))
         genericParams[[param_names[j]]] = returnParamMetadata(generic_data[[param_names[j]]])
       }
     }
@@ -142,7 +148,6 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
 }
 rlog::log_info(paste("Step1: Parsing",nf_params_json))
 x = getParams(json_data,override_list = args$sections_override,generic_data =generic_data,sections_ignore = sections_ignore)
-
 
 ### Using the XML package, consider adding nodes to the prefix.xml using newXMLNode():
   
@@ -177,7 +182,6 @@ retrieveDataInput <- function(param_configuration){
   retrieval_results[["params"]] = param_configuration1
   return(retrieval_results)
 }
-
 #### convert getParams object into an 'Illumina parameters XML'compatible format
 convertParams <- function(parsed_json){
   allParams = list()
@@ -199,7 +203,9 @@ convertParams <- function(parsed_json){
   return(allParams)
 }
 rlog::log_info(paste("STEP2: Converting JSON to be ready for ICA XML"))
+#print(x)
 y = convertParams(x)
+#print(y)
 data_input_configurations = y[["dataInputs"]]
 if(args$nf_core_mode){
   ########### workaround add input files --- will not be used by pipeline , but by ICA to stage the data
@@ -210,6 +216,7 @@ if(args$nf_core_mode){
 }
 #####################
 step_configurations = y[["steps"]]
+
 # XML STRING 
 prefix.xml <- "
 <?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
@@ -325,9 +332,9 @@ if(length(step_configurations)>0){
       if("default" %in% names(parameter_metadata)){
         dummy_value = ""
         if(parameter_metadata[["default"]] != ""){
-          if(parameter_metadata[["default"]] == FALSE){
+          if(parameter_metadata[["default"]] == FALSE & parameter_metadata[["default"]] != 0){
             parameter_metadata[["default"]] = "false"
-          } else if(parameter_metadata[["default"]] == TRUE){
+          } else if(parameter_metadata[["default"]] == TRUE & parameter_metadata[["default"]] != 1){
             parameter_metadata[["default"]] = "true"
           }
         } else{

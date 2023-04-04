@@ -3,6 +3,7 @@ suppressPackageStartupMessages(library("argparse"))
 library(stringr)
 library(rjson)
 library(rlog)
+library(jsonlite)
 # create parser object
 parser <- ArgumentParser()
 
@@ -14,7 +15,7 @@ parser$add_argument("-i", "--input", default = NULL, required = FALSE,
 parser$add_argument("-s","--staging-directory", "--staging_directory", default=NULL, 
                     required = TRUE, help="staging_directory to stage nf-core pipelines")
 parser$add_argument("-r", "--run-scripts","--run_scripts", default=NULL,
-                    help="run_script directory for this pipeline")
+                    help="run_script directory for this script")
 parser$add_argument("-y", "--strict-xml-mode","--strict_xml_mode", action="store_true",default=FALSE,
                     help="Strictly define dataInputs and parameters in XML")
 parser$add_argument("-d", "--dsl2-check","--dsl2_check", action="store_true",default=FALSE,
@@ -43,6 +44,8 @@ parser$add_argument("-t","--intermediate-copy-template","--intermediate_copy_tem
                     help = "default NF script to copy intermediate and report files from ICA")
 parser$add_argument("-b","--base-ica-url","--base_ica_url",
                     default="ica.illumina.com", help = "ICA base URL")
+parser$add_argument("-z","--time-from-last-update","--time_from_last_update",default=120,
+                    help = "Identify tagged releases of pipeline that are 180 days or older")
 args <- parser$parse_args()
 
 input_json = NULL
@@ -50,6 +53,7 @@ git_repos = args$git_repos
 git_repos = git_repos[git_repos != ""]
 pipeline_dirs = args$pipeline_dirs
 pipeline_dirs = pipeline_dirs[pipeline_dirs != ""]
+time_from_last_update = args$time_from_last_update
 #generate_xml = args$generate_xml
 if(!is.null(args$input)){
   input_json = args$input
@@ -88,8 +92,9 @@ if(args$create_pipeline_in_ica){
   ica_project_name = args$ica_project_name
 }
 #########
-timestamp_diff_good <- function(pipeline_object,timestamp_cutoff=180){
+timestamp_diff_good <- function(pipeline_object,timestamp_cutoff=time_from_last_update){
   releases_good = c()
+  rlog::log_info(paste("Checking for tagged release that are >= ",time_from_last_update,"days old"))
   for(i in 1:length(pipeline_object)){
     diff_in_s = as.integer(as.POSIXct( Sys.time() )) -  pipeline_object[[i]]$published_at_timestamp
     diff_in_days = diff_in_s/(60*60*24)
@@ -120,7 +125,7 @@ if(!is.null(input_json)){
         number_of_releases = number_of_releases[length(number_of_releases)]
           # sorted by release date . the larger the number, the more recent the release
         if(number_of_releases > 1){
-          release_number = number_of_releases -1
+          release_number = number_of_releases
         } else{
           # or pick oldest
           release_number = 1
@@ -184,6 +189,15 @@ if(!is.null(input_json)){
         checkout_cmd = paste("git checkout",paste(git_branches_to_try))
         system(checkout_cmd)
       }
+      nf_pipeline_metadata = list()
+      nf_pipeline_metadata[["name"]] = pipeline_name
+      nf_pipeline_metadata[["github_link"]] = pipeline_github_link
+      if(!is.null(git_branches_to_try)){
+         nf_pipeline_metadata[["release_branch"]] = git_branches_to_try
+      } else{
+        nf_pipeline_metadata[["release_branch"]] = "main"
+      }
+      nf_pipelines_metadata[[pipeline_name]] = nf_pipeline_metadata
     }
   } else if(length(pipeline_dirs) >0){
     rlog::log_info(paste("CONVERTING  pipelines from local sources"))
@@ -537,3 +551,12 @@ if(args$create_pipeline_in_ica){
     }
   }
 }
+#######################
+if(!is.null(staging_directory)){
+  file_output = paste(staging_directory,"nf-core.ica_conversion.metadata.json",sep="/")
+} else{
+  file_output = "nf-core.ica_conversion.metadata.json"
+}
+nf_pipelines_metadata_json = jsonlite::toJSON(nf_pipelines_metadata,pretty=TRUE)
+rlog::log_info(paste("Writing out nf-core pipeline metadata out to:",nf_pipelines_metadata_json))
+write(nf_pipelines_metadata_json,file=file_output)

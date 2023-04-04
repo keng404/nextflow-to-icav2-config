@@ -312,7 +312,11 @@ get_demo_dataset <- function(pipeline_alias,nfcore_manifest_bundle,demo_dataset_
     dataset_label = nfcore_manifest_bundle[nfcore_manifest_bundle[,1] %in% pipeline_alias,]$data_label
   } else{
     rlog::log_warn(paste("Could not find",pipeline_alias,"in the nfcore manifest bundle"))
-    dataset_label = "Illumina DRAGEN RNA Demo Data"
+    if(grepl("rna",pipeline_alias,ignore.case = T) | !(grepl("viral",pipeline_alias,ignore.case = T))){
+     dataset_label = "Illumina DRAGEN RNA Demo Data"
+    } else{
+      dataset_label = "covidseq_fastq_input"
+    }
   }
   
   # check dataset against data_type
@@ -353,7 +357,7 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
       vals_of_interest = stringr::str_extract(pattern_of_interest,"\\([^()]+\\)")[[1]]
       vals_of_interest = gsub("\\(|\\)","",vals_of_interest)
       vals_of_interest_split = strsplit(vals_of_interest,"\\|")[[1]]
-      add_col = rep(vals_of_interest_split[1],nrow(spreadsheet_lines))
+      add_col = rep(vals_of_interest_split[length(vals_of_interest_split)],nrow(spreadsheet_lines))
     } else{
       if(sum("type" %in% names(field_metadata[[col_to_add]])) > 0 ){
         if(field_metadata[[col_to_add]][["type"]] == "integer"){
@@ -626,7 +630,7 @@ fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_t
   # how to get initial files staged within project dir?
   json_template1 = json_template
   if(is.null(input_spreadsheet)){
-    json_template1[["parameters"]][["input"]][["value"]] = "\"*{fastq,fg}.gz\""
+    json_template1[["parameters"]][["input"]][["value"]] = "\"*{fastq,fq}.gz\""
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
     
@@ -644,7 +648,7 @@ set_dummy_parameter_setting <- function(pipeline_settings){
   for(i in 1:length(params_to_check)){
     default_value = pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]]
     param_type = pipeline_settings[["parameters"]][[params_to_check[i]]][["type"]]
-    if(params_to_check[i] == "input" & (default_value == "null" | default_value == "")){
+    if(params_to_check[i] == "input" & (default_value == "null" | default_value == ""| grepl("\\*",default_value))){
       default_value = "\"*{fastq,fg}.gz\""
     } else if(is.null(default_value)){
       if(param_type == "stringType"){
@@ -690,6 +694,7 @@ check_usage_doc <- function(usage_documentation){
   if(sum(line_of_interest) > 0){
     usage_list[["command_line"]] = usage_documentation_data[line_of_interest,][1]
     usage_list[["params_to_override"]] = list()
+    usage_list[["other_params_of_interest"]] = list()
     usage_list[["samplesheet"]] = NULL
     usage_list[["usage_lines"]] = usage_documentation_data
     usage_list[["usage_lines_of_interest"]]  =usage_lines_of_interest
@@ -700,9 +705,15 @@ check_usage_doc <- function(usage_documentation){
         if(length(cli_split) >= (i+1)){
           val_of_interest = cli_split[i+1]
           if(grepl("'",val_of_interest)){
-            usage_list[["params_to_override"]][[cli_split[i]]] = val_of_interest 
+            if(sum(cli_split[i] %in% c("--input","-input","input")) == 0 ){
+             usage_list[["params_to_override"]][[cli_split[i]]] = val_of_interest 
+            } else{
+              usage_list[["other_params_of_interest"]][[cli_split[i]]] = val_of_interest 
+            }
           } else if(grepl("tsv",val_of_interest) | grepl("csv",val_of_interest)){
             usage_list[["samplesheet"]] = val_of_interest
+          } else{
+            usage_list[["other_params_of_interest"]][[cli_split[i]]] = val_of_interest 
           }
         }
       }
@@ -774,6 +785,11 @@ for( i in 1:length(pipeline_creation_jsons)){
   csvs_of_interest = list.files(pipeline_dir,pattern="*csv$",full.names=TRUE,recursive=TRUE)
   template_files_of_interest = c(tsvs_of_interest,csvs_of_interest)
   usage_docs = list.files(pipeline_dir,pattern="usage.md",full.names=TRUE,recursive=TRUE)
+  if(length(usage_docs) > 0){
+    test_list = check_usage_doc(usage_docs[1])
+  } else{
+    test_list = NULL
+  }
   demodataset_list = get_demo_dataset(pipeline_alias,nfcore_manifest_bundle=nfcore_bundle_info,demo_dataset_bundle=demo_data_manifest)
   if(length(json_of_interest) > 0){
     json_of_interest = json_of_interest[1]
@@ -797,7 +813,7 @@ for( i in 1:length(pipeline_creation_jsons)){
       test_list = check_usage_doc(usage_docs[1])
       line_idxs = (1:length(test_list$usage_lines_of_interest))[test_list$usage_lines_of_interest]
       if(!is.null(test_list[["samplesheet"]])){
-        rlog::log_info(paste("Trying to create template for:",pipeline_name,"based of documentation\n",usage_docs[1]))
+        rlog::log_info(paste("Trying to create template for:",pipeline_name,"based off of documentation\n",usage_docs[1]))
         delimitter = ","
         new_template = paste(pipeline_name,".",test_list[["samplesheet"]],sep="")
         if(grepl("tsv",new_template)){
@@ -816,17 +832,35 @@ for( i in 1:length(pipeline_creation_jsons)){
       } else{
         updated_template_json_list = fill_json_template_with_demo_data(pipeline_name=pipeline_name,demo_dataset=demodataset_list[["data_ids"]], json_template=template_json_list,ica_auth_list = ica_auth_list)
       }
-      if(length(test_list[["params_to_override"]]) > 0){
-        add_to_json = test_list[["params_to_override"]]
-        keys_to_add = names(add_to_json)
-        keys_to_add = apply(t(keys_to_add),2,function(x) gsub("-","",x))
-        for(atj in 1:length(keys_to_add)){
-          updated_template_json_list[["parameters"]][[keys_to_add[atj]]] = add_to_json[[keys_to_add[atj]]]
-        }
-      }
     }
   }
   revised_template_json_list = set_dummy_parameter_setting(updated_template_json_list)
+  ### last second --- add overrides based on documentation
+  #print(jsonlite::toJSON(updated_template_json_list,pretty=TRUE))
+  #####
+  print(test_list)
+  if(!is.null(test_list)){
+    if(length(test_list[["params_to_override"]]) > 0){
+      add_to_json = test_list[["params_to_override"]]
+      original_keys_to_add = names(add_to_json)
+      keys_to_add = apply(t(original_keys_to_add),2,function(x) gsub("-","",x))
+      for(atj in 1:length(keys_to_add)){
+        value_to_add = add_to_json[[original_keys_to_add[atj]]]
+        rlog::log_info(paste("updating parameter setting in CLI:",keys_to_add[atj],"->",value_to_add))
+        if(!sum(keys_to_add[atj] %in% names(revised_template_json_list[["parameters"]])) > 0) {
+          revised_template_json_list[["parameters"]][[keys_to_add[atj]]] = list()
+          revised_template_json_list[["parameters"]][[keys_to_add[atj]]][["minValue"]] = "1"
+          revised_template_json_list[["parameters"]][[keys_to_add[atj]]][["maxValue"]] = "1"
+          if(sum(value_to_add %in% c("true","false",TRUE,FALSE))>0){
+            revised_template_json_list[["parameters"]][[keys_to_add[atj]]][["type"]] = "booleanType"
+          } else{
+            revised_template_json_list[["parameters"]][[keys_to_add[atj]]][["type"]] = "stringType"
+          }
+        }
+        revised_template_json_list[["parameters"]][[keys_to_add[atj]]][["value"]] = value_to_add
+      }
+    }
+  }
   template_JSON = jsonlite::toJSON(revised_template_json_list,pretty=TRUE)
   rlog::log_info(paste("Writing template to",cli_json))
   write(template_JSON,file=cli_json)

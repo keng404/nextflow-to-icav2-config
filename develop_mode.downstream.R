@@ -1030,6 +1030,10 @@ absolute_path_update_module <- function(module_file){
           found_update = TRUE
           found_updates = TRUE
           remove_line = TRUE
+        } else if(sum(apply(t(module_line_split),2,function(x) grepl("conda",x)))>0 ){
+          found_update = TRUE
+          found_updates = TRUE
+          remove_line = TRUE
         }
       }
     }
@@ -1042,7 +1046,7 @@ absolute_path_update_module <- function(module_file){
         rlog::log_info(paste("TEMPLATE_LINE: here I am:", paste(module_line_split,collapse = " ", sep = " ")))
         module_line_split = paste(module_line_split,collapse = " ", sep = " ")
         module_line_split = strsplit(module_line_split,"\\s+")[[1]]
-        module_line_split = module_line_split[!module_line_split %in% c("bash","python","Rscript")]
+        module_line_split = module_line_split[!module_line_split %in% c("bash","python","Rscript","perl")]
         rlog::log_info(paste("TEMPLATE_LINE_v2: here I am:", paste(module_line_split,collapse = " ", sep = " ")))
         module_line_split = paste(module_line_split,collapse = " ", sep = " ")
         module_line_split = gsub("\\$\\{","",module_line_split)
@@ -1050,7 +1054,7 @@ absolute_path_update_module <- function(module_file){
         module_line_split = gsub("workflow.launchDir/","",module_line_split)
         module_line_split = strsplit(module_line_split,"\\s+")[[1]]
         module_line_split = paste(module_line_split[1],paste("'",basename(module_line_split[2:length(module_line_split)]),"'",sep=""))
-        module_line_split = paste(module_line_split,collapse = " ", sep = " ")
+        module_line_split = paste("\t",module_line_split,collapse = " ", sep = " ")
       }
       if(!remove_line){
         new_line = paste(module_line_split,collapse = " ",sep = " ")
@@ -1060,9 +1064,12 @@ absolute_path_update_module <- function(module_file){
         # work around to turn local jobs into a kubernetes job
         rlog::log_warn(paste("REMOVING LINE:", paste(module_line_split,collapse = " ",sep = " ")))
         #new_line = paste("\tcontainer","'nextflow/nextflow:22.04.3'")
-        new_line = paste("\tcpus","2")
-        updated_lines[idx,] = new_line
-        #rows_to_remove = c(rows_to_remove,idx)
+        if(sum(apply(t(module_line_split),2,function(x) grepl("conda",x))) == 0){
+          new_line = paste("\tcpus","2")
+          updated_lines[idx,] = new_line
+        } else{
+          rows_to_remove = c(rows_to_remove,idx)
+        }
       }
     } 
   }

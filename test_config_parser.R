@@ -172,6 +172,9 @@ config_to_json_like <- function(config_content){
             if(length(spaces_in_line) > 0){
               line_splitt[spaces_in_line[1]] = " : "
               config_line = paste(line_splitt,sep = " ",collapse = " ")
+            } else if(sum(line_splitt == "") == 0 & sum(apply(t(line_splitt),2,function(x) grepl(":",x)))  == 0){
+              line_splitt[1] = paste(line_splitt[1],":",collapse = " ")
+              config_line = paste(line_splitt,sep = " ",collapse = " ")
             }
           }
         }
@@ -235,7 +238,12 @@ add_genome_to_parameters_list <- function(keys_to_add,xml_file){
     }
   }
   # default params.genome to be first key in params.genome object
-  newXMLNode("value",keys_to_add[1],parent=nested_parameter_node)
+  found_option_of_interest = apply(t(keys_to_add),2,function(x) grepl("GRCh38",x))
+  if(sum(found_option_of_interest) ==0){
+    newXMLNode("value",keys_to_add[1],parent=nested_parameter_node)
+  } else{
+    newXMLNode("value",keys_to_add[found_option_of_interest][1],parent=nested_parameter_node)
+  }
   outputPath = gsub(".xml$",".updated.xml",xml_file)
   #rlog::log_info(paste("Updating parameters XML here:",outputPath))
   #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'

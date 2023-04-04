@@ -106,7 +106,7 @@ create_conditional_statements = function(modules_list,module_name = NULL){
   }
   if(length(conditional_statement_lines)>0){
     conditional_statement_lines = c(conditional_statement_lines,"\t}\n")
-   # conditional_statement_lines = c(conditional_statement_lines,"}\n")
+    conditional_statement_lines = c(conditional_statement_lines,"}\n")
   }
   #conditional_statement_lines = c(conditional_statement_lines,"}\n")
   return(conditional_statement_lines)
