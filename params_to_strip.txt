@@ -23,3 +23,5 @@ params.publish_dir_mode
 params.igenomes_ignore
 params.enable_conda
 params.tracedir
+params.email_on_fail
+params.email

@@ -312,10 +312,18 @@ get_demo_dataset <- function(pipeline_alias,nfcore_manifest_bundle,demo_dataset_
     dataset_label = nfcore_manifest_bundle[nfcore_manifest_bundle[,1] %in% pipeline_alias,]$data_label
   } else{
     rlog::log_warn(paste("Could not find",pipeline_alias,"in the nfcore manifest bundle"))
-    if(grepl("rna",pipeline_alias,ignore.case = T) | !(grepl("viral",pipeline_alias,ignore.case = T))){
-     dataset_label = "Illumina DRAGEN RNA Demo Data"
+    if(grepl("rna",pipeline_alias,ignore.case = T) & !grepl("viral",pipeline_alias,ignore.case = T) & !grepl("scrnaseq",pipeline_alias,ignore.case = T)){
+      dataset_label = "Illumina DRAGEN RNA Demo Data"
+    } else if(grepl("sarek",pipeline_alias,ignore.case=T) | grepl("hlatyping",pipeline_alias,ignore.case=T)){
+      dataset_label = "Illumina DRAGEN Enrichment Demo Data"
+    } else if(grepl("scrnaseq",pipeline_alias,ignore.case = T)){
+      dataset_label = "Illumina DRAGEN scRNA Demo Data"
+    } else if(grepl("methylseq",pipeline_alias,ignore.case = T)){
+      dataset_label = "Illumina DRAGEN Methylation Demo Data"
+    } else if(grepl("viralrecon",pipeline_alias,ignore.case = T)){
+      dataset_label = "COVIDSEQ_SRA"
     } else{
-      dataset_label = "covidseq_fastq_input"
+      dataset_label = "Illumina DRAGEN RNA Demo Data"
     }
   }
   
@@ -351,13 +359,15 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
     col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% col_to_add]
     if(sum("enum" %in% names(field_metadata[[col_to_add]]))){
       possible_enums = field_metadata[[col_to_add]][["enum"]]
-      add_col = rep(possible_enums[length(possible_enums)],nrow(spreadsheet_lines))
+      #add_col = rep(possible_enums[length(possible_enums)],nrow(spreadsheet_lines))
+      add_col = rep(possible_enums[1],nrow(spreadsheet_lines))
     } else if(sum("anyOf" %in% names(field_metadata[[col_to_add]])) > 0 ){
       pattern_of_interest = field_metadata[[col_to_add]][["anyOf"]][["pattern"]]
       vals_of_interest = stringr::str_extract(pattern_of_interest,"\\([^()]+\\)")[[1]]
       vals_of_interest = gsub("\\(|\\)","",vals_of_interest)
       vals_of_interest_split = strsplit(vals_of_interest,"\\|")[[1]]
-      add_col = rep(vals_of_interest_split[length(vals_of_interest_split)],nrow(spreadsheet_lines))
+     # add_col = rep(vals_of_interest_split[length(vals_of_interest_split)],nrow(spreadsheet_lines))
+      add_col = rep(vals_of_interest_split[1],nrow(spreadsheet_lines))
     } else{
       if(sum("type" %in% names(field_metadata[[col_to_add]])) > 0 ){
         if(field_metadata[[col_to_add]][["type"]] == "integer"){
@@ -404,8 +414,13 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   if(sum(!spreadsheet_header %in% fields_assumed) > 0){
     cols_to_add = spreadsheet_header[!spreadsheet_header %in% fields_assumed]
     cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]] | cols_to_add %in% other_fields_of_interest]
+  } else{
+    fields_assumed = c()
+    cols_to_add = spreadsheet_header
+    cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]] | cols_to_add %in% other_fields_of_interest]
   }
-  if(sum(spreadsheet_header %in% fields_assumed) > 1 & sum(found_data_types_assumed) > 0 ) {
+  #if(sum(spreadsheet_header %in% fields_assumed) > 1 & 
+  if(sum(found_data_types_assumed) > 0 ) {
   spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
   spreadsheet_lines = c()
   # assume paired-end
@@ -433,9 +448,10 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
     } else if(sum(r1_group) > 0 & sum(r2_group) == 0){
       r1_group_files = files_of_interest[r1_group]
       r1_group_files = apply(t(r1_group_files),2,basename)
+      #spreadsheet_header = c("sample","fastq_1")
       rlog::log_info(paste("r1_group_files:",paste(r1_group_files,sep=", ",collapse=", ")))
       for(j in 1:length(r1_group_files)){
-        spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,r1_group_files[j]))
+        spreadsheet_lines = rbind(spreadsheet_lines,c(sample_id_of_interest,r1_group_files[j],""))
       }
     } else{
       rlog::log_error(paste("Cannot find R1 or R2 groups for these files:",files_of_interest))
@@ -821,6 +837,11 @@ for( i in 1:length(pipeline_creation_jsons)){
         }
         template_data = create_template_data(test_list[["usage_lines"]][line_idxs[3]:line_idxs[4],])
         if(nrow(template_data) > 0){
+          comma_delimitted = strsplit(template_data[1,],",")[[1]]
+          tab_delimitted = strsplit(template_data[1,],"\t")[[1]]
+          if(length(tab_delimitted) > length(comma_delimitted) ){
+            delimitter = "\t"
+          }
           write.table(template_data,file=new_template,sep=delimitter)
           template_files_of_interest = c(new_template)
           samplesheet = create_dummy_spreadsheet_no_json(pipeline_name,template_files_of_interest,demodataset_list)
@@ -838,7 +859,7 @@ for( i in 1:length(pipeline_creation_jsons)){
   ### last second --- add overrides based on documentation
   #print(jsonlite::toJSON(updated_template_json_list,pretty=TRUE))
   #####
-  print(test_list)
+  #print(test_list)
   if(!is.null(test_list)){
     if(length(test_list[["params_to_override"]]) > 0){
       add_to_json = test_list[["params_to_override"]]

@@ -4,4 +4,6 @@ params.publish_dir_mode = 'copy'
 params.conda_enabled = false
 params.igenomes_ignore = false
 params.enable_conda = false
+params.email_on_fail = null
+params.email = null
 process = [:]

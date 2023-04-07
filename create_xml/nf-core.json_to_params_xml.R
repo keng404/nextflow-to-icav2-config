@@ -40,7 +40,7 @@ json_data = fromJSON(file=nf_params_json)$definitions
 generic_data  = fromJSON(file=nf_params_json)$properties
 parameter_sections = names(json_data)
 rlog::log_info(paste("PARAMETER_SECTIONS:",paste(parameter_sections,collapse=", ")))
-params_to_ignore = c("input_paths","tracedir")
+params_to_ignore = c("input_paths","tracedir","email")
 #####################
 returnParamMetadata <- function(param_configuration){
   param_metadata = list()

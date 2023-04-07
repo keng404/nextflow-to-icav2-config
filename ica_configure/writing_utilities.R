@@ -24,7 +24,14 @@ clean_list <- function(list_to_clean){
         list_cleaned[[key_name]] = list_to_clean[[key_name]]
       }
     } else if(!is.na(key_name) & !is.na(list_to_clean[[key_name]]) & sum(list_to_clean[[key_name]] %in% malformed_values) == 0){
-      list_cleaned[[key_name]] = list_to_clean[[key_name]]
+      if(key_name != "cache" & key_name != "cpus"){
+        list_cleaned[[key_name]] = list_to_clean[[key_name]]
+      } else{
+        key_value = list_to_clean[[key_name]]
+        key_value = gsub("\\{","",key_value)
+        key_value = gsub("\\}","",key_value)
+        list_cleaned[[key_name]] = list_to_clean[[key_name]]
+      }
     } else if(!is.na(key_name) & sum(list_to_clean[[key_name]] %in% malformed_values) > 0){
       key_remove = key_name
       key_remove_value  = list_to_clean[[key_name]]
@@ -91,6 +98,10 @@ create_conditional_statements = function(modules_list,module_name = NULL){
       for(k in 1:length(process_keys)){
         sub_process_keys = names(modules_list[[keys_of_interest[j]]][[process_keys[k]]])
         sub_process_value = paste(modules_list[[keys_of_interest[j]]][[process_keys[k]]],collapse=" ")
+        if(process_keys[k] == "cache" | sub_process_keys[k] == "cpus"){
+          sub_process_value = gsub("\\{","",sub_process_value)
+          sub_process_value = gsub("\\}","",sub_process_value)
+        }
         if(length(sub_process_value) > 0){
             if(!is.null(module_name)){
               conditional_statement_lines = c(conditional_statement_lines,paste("\t\t",process_keys[k],"=",sub_process_value,collapse=" "))
@@ -135,6 +146,10 @@ create_regular_statements = function(modules_list,module_name = NULL){
       if(length(sub_process_keys) > 0){
         for(sk in 1:length(sub_process_keys)){
           sub_process_value = paste(modules_list[["default"]][[sub_process_keys[sk]]],collapse=" ")
+          if(sub_process_keys[sk] == "cache" | sub_process_keys[sk] == "cpus"){
+            sub_process_value = gsub("\\{","",sub_process_value)
+            sub_process_value = gsub("\\}","",sub_process_value)
+          }
           if(!is.null(module_name)){
            regular_statement_lines = c(regular_statement_lines,paste("\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
           } else{
@@ -362,7 +377,7 @@ override_module_config <- function(module_list,ica_instance_table){
             rlog::log_info(paste("PARAMETER_VALUE:",parameter_value,collapse = " "))
             parameter_value_split = strsplit(parameter_value,"\\s+")[[1]]
             parameter_value_split = parameter_value_split[ parameter_value_split != "" ]
-            if(!grepl("\\[",parameter_value_split[1] ) & !grepl("\\]",parameter_value_split[length(parameter_value_split)])){
+            if(!grepl("\\[",parameter_value_split[1] ) & !grepl("\\]",parameter_value_split[length(parameter_value_split)]) & grepl("pod",config_parameter)){
                 rlog::log_info(paste("ATTEMPTING TO REVISE PARAMETER VALUE"))
               for(l in 1:length(parameter_value_split)){
                 if(parameter_value_split[l] == "path:"){
