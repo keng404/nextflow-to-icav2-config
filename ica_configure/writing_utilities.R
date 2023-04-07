@@ -99,8 +99,10 @@ create_conditional_statements = function(modules_list,module_name = NULL){
         sub_process_keys = names(modules_list[[keys_of_interest[j]]][[process_keys[k]]])
         sub_process_value = paste(modules_list[[keys_of_interest[j]]][[process_keys[k]]],collapse=" ")
         if(process_keys[k] == "cache" | sub_process_keys[k] == "cpus"){
-          sub_process_value = gsub("\\{","",sub_process_value)
-          sub_process_value = gsub("\\}","",sub_process_value)
+          if(!grepl("\\(",sub_process_value)){
+            sub_process_value = gsub("\\{","",sub_process_value)
+            sub_process_value = gsub("\\}","",sub_process_value)
+          }
         }
         if(length(sub_process_value) > 0){
             if(!is.null(module_name)){
@@ -147,8 +149,10 @@ create_regular_statements = function(modules_list,module_name = NULL){
         for(sk in 1:length(sub_process_keys)){
           sub_process_value = paste(modules_list[["default"]][[sub_process_keys[sk]]],collapse=" ")
           if(sub_process_keys[sk] == "cache" | sub_process_keys[sk] == "cpus"){
-            sub_process_value = gsub("\\{","",sub_process_value)
-            sub_process_value = gsub("\\}","",sub_process_value)
+            if(!grepl("\\(",sub_process_value)){
+              sub_process_value = gsub("\\{","",sub_process_value)
+              sub_process_value = gsub("\\}","",sub_process_value)
+            }
           }
           if(!is.null(module_name)){
            regular_statement_lines = c(regular_statement_lines,paste("\t",sub_process_keys[sk],"=",sub_process_value,collapse=" "))
