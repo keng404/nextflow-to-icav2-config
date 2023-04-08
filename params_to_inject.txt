@@ -1,4 +1,5 @@
 docker.enabled = true
+docker.userEmulation = true
 params.outdir = 'out'
 params.publish_dir_mode = 'copy'
 params.conda_enabled = false
