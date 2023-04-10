@@ -55,7 +55,7 @@ Installation [instructions](https://help.ica.illumina.com/command-line-interface
 
 A table of all CLI releases for mac, linux, and windows can be found [here](https://help.ica.illumina.com/command-line-interface/cli-releasehistory)
 
-The Project view should be the default view after logging into and clicking on your ICA 'card' ( This will redirect you to https://illumina.ica.com/ica)
+The Project view should be the default view after logging into your private domain (https://my_domain.login.illumina.com) and clicking on your ICA 'card' ( This will redirect you to https://illumina.ica.com/ica)
 
 ## Let's do some liftovers !!!!
 ```bash
