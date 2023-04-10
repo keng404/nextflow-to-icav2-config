@@ -59,6 +59,7 @@ rlog::log_debug(paste("URL_OF_INTEREST:",instance_type_table_url,collapse = " ")
 ica_instance_table = get_instance_type_table(url=instance_type_table_url)
 ica_instance_table$CPUs = as.numeric(ica_instance_table$CPUs)
 ica_instance_table$`Mem (GB)` = as.numeric(ica_instance_table$`Mem (GB)`)
+additional_lines = c("process {",'\twithName:\'CUSTOM_DUMPSOFTWAREVERSIONS\' {',"\terrorStrategy = 'ignore'","\t}","}")
 ##############################################
 
 if(is_simple_config | is.null(base_config_files)){
@@ -113,6 +114,9 @@ if(is_simple_config | is.null(base_config_files)){
     # parse modules file
     base_configuration = loadModuleMetadata(c(base_config_file))
     updated_base_configuration = override_module_config(module_list = base_configuration,ica_instance_table = ica_instance_table)
+    
+    ## add additional overrides
+    second_pass_lines[["lines_to_migrate"]]  = c(second_pass_lines[["lines_to_migrate"]] ,additional_lines)
     write_modules(modules_list = updated_base_configuration,output_file=paste(dirname(config_file),base_config_relative_path,sep="/"),template_file=base_config_template,additional_lines = second_pass_lines[["lines_to_migrate"]])
     add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=base_config_file_path,additional_config=base_config_relative_path)
     

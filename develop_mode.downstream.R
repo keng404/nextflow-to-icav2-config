@@ -966,7 +966,7 @@ override_nextflow_script_command <- function(script,associated_cmd){
   script_filename_split = strsplit(basename(script),"\\.")[[1]]
   associated_cmd_split = strsplit(associated_cmd,"\\s+")[[1]]
   associated_cmd_split = associated_cmd_split[ associated_cmd_split!="" ]
-  if(!"template" %in% associated_cmd_split){
+  if(sum("template" %in% associated_cmd_split) == 0 ){
     script_file_extension = tolower(script_filename_split[length(script_filename_split)])
     if(script_file_extension %in% names(execution_choices)){
       updated_cmd = paste(execution_choices[[script_file_extension]],associated_cmd)
@@ -1064,7 +1064,7 @@ absolute_path_update_module <- function(module_file){
         # work around to turn local jobs into a kubernetes job
         rlog::log_warn(paste("REMOVING LINE:", paste(module_line_split,collapse = " ",sep = " ")))
         #new_line = paste("\tcontainer","'nextflow/nextflow:22.04.3'")
-        if(sum(apply(t(module_line_split),2,function(x) grepl("conda",x))) == 0){
+        if(sum(apply(t(module_line_split),2,function(x) x[1] == "conda")) == 0){
           new_line = paste("\tcpus","2")
           updated_lines[idx,] = new_line
         } else{

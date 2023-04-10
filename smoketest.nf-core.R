@@ -414,11 +414,7 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   if(sum(!spreadsheet_header %in% fields_assumed) > 0){
     cols_to_add = spreadsheet_header[!spreadsheet_header %in% fields_assumed]
     cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]] | cols_to_add %in% other_fields_of_interest]
-  } else{
-    fields_assumed = c()
-    cols_to_add = spreadsheet_header
-    cols_to_add = cols_to_add[cols_to_add %in% input_schema_json[["items"]][["required"]] | cols_to_add %in% other_fields_of_interest]
-  }
+  } 
   #if(sum(spreadsheet_header %in% fields_assumed) > 1 & 
   if(sum(found_data_types_assumed) > 0 ) {
   spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
@@ -465,12 +461,14 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   if(length(cols_to_add) >0){
     print(cols_to_add)
     spreadsheet_lines = create_dummy_columns(cols_to_add,field_metadata,spreadsheet_lines,spreadsheet_header)
+    spreadsheet_header = c(spreadsheet_header,cols_to_add)
+    spreadsheet_header = unique(spreadsheet_header)
   } else{
     spreadsheet_lines = as.data.frame(spreadsheet_lines)
     colnames(spreadsheet_lines) = spreadsheet_header
   } 
   spreadsheet_lines = as.data.frame(spreadsheet_lines)
-  #colnames(spreadsheet_lines) = spreadsheet_header
+  colnames(spreadsheet_lines) = spreadsheet_header
   ### write spreadsheet
   write.table(spreadsheet_lines,file=paste(pipeline_name,".input.csv",sep=""),row.names=F,sep=",",quote=F)
   rlog::log_info(paste("Generated input spreadsheet:",paste(pipeline_name,".input.csv",sep="")))
