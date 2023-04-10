@@ -14,10 +14,9 @@ Some examples of nextflow pipelines that have been lifted over with this repo ca
 What these scripts do is parse configuration files and the main NF script of a pipeline and update the underlying processes with what's mentioned below.
 Additionally parameters mentioned in these configuration files that are not referenced in the main NF file are brought into the main NF script. 
 
-# important note
-Prior to ICAv 2.8, ICA did not allow you to use your own configuration files currently. Since the 2.8 release, configuration files can now be be utilized, but there are some quirks based on how ICA parses the configuration files to prevent users over-riding [certain parameters](https://help.ica.illumina.com/project/p-flow/f-pipelines/pi-nextflow#nextflow-configuration). A small list of caveats can be found [here](). Note that the scripts in this repository does not reflect the ability of ICA users to bring in ICA specific configuration files for their pipeline and modules. Please contact [Ken](keng@illumina.com) if you have any code or ideas on implementing this. 
 
 # ICA Concepts to better understand ICA liftover of nextflow pipelines
+
 Nextflow workflows on ICA are orchestrated by kubernetes and require a parameters XML file 
 - containing data inputs (i.e. files + folders) and other string-based options for all configurable parameters to properly be passed from ICA to your Nextflow workflows
 - processes will need to contain a reference to a container --- a Docker image that will run that specific process
@@ -30,21 +29,51 @@ These scripts have been made to be compatible with [nf-core](https://github.com/
 
 The scripts mentioned below can be run in a docker image ```TBD```
 
-You'll first need to download the python module from nf-core via a ```pip install nf-core``` command
-Then you can use nf-core list --json to return a JSON metadata file containing current pipelines in the nf-core repository. You can choose which pipelines to  ```git clone``` but as a convenience, the wrapper ```nf-core.conversion_wrapper.R ``` will perform a git pull, parse nextflow_schema.json files and generate parameter XML files, and then read configuration and nextflow scripts and make some initial modifications for ICA development. Lastly these pipelines are created in an ICA project of your choosing. So you will need to generate and download an API key from the ICA domain of your choosing.
+# Prerequitsites
 
+## STEP 1 [OPTIONAL] : create JSON of nf-core pipeline metadata or specify pipeline of interest
+
+If you have a specific pipeline from github, you can skip this statement below.
+
+You'll first need to download the python module from nf-core via a ```pip install nf-core``` command
+Then you can use nf-core list --json to return a JSON metadata file containing current pipelines in the nf-core repository. 
+
+You can choose which pipelines to  ```git clone``` but as a convenience, the wrapper ```nf-core.conversion_wrapper.R ``` will perform a git pull, parse nextflow_schema.json files and generate parameter XML files, and then read configuration and nextflow scripts and make some initial modifications for ICA development. Lastly these pipelines are created in an ICA project of your choosing. So you will need to generate and download an API key from the ICA domain of your choosing.
+
+
+## STEP 2: Obtain API key file
+
+Next, you'll need an API key file for ICA that can be generated using the instructions [here](https://help.ica.illumina.com/account-management/am-iam#api-keys)
+
+## STEP 3: Create a project in ICA
+
+Lastly, you'll need to create a project in ICA. You can do this via the CLI and API, but you should be able to follow these [instructions](https://help.ica.illumina.com/home/h-projects#create-new-project) to create a project via the ICA GUI.
+
+## STEP 4: Download and configure the ICA CLI (see STEP 2):
+
+Installation [instructions](https://help.ica.illumina.com/command-line-interface/cli-installation)
+
+A table of all CLI releases for mac, linux, and windows can be found [here](https://help.ica.illumina.com/command-line-interface/cli-releasehistory)
+
+The Project view should be the default view after logging into and clicking on your ICA 'card' ( This will redirect you to https://illumina.ica.com/ica)
+
+## Let's do some liftovers !!!!
 ```bash
 Rscript nf-core.conversion_wrapper.R --input {PIPELINE_JSON_FILE} --staging_directory {DIRECTORY_WHERE_NF_CORE_PIPELINES_ARE_LOCATED} --run-scripts {DIRECTORY_WHERE_THESE_R_SCRIPTS_ARE_LOCATED}  --intermediate-copy-template {DIRECTORY_WHERE_THESE_R_SCRIPTS_ARE_LOCATED}/dummy_template.txt --create-pipeline-in-ica --api-key-file {API_KEY_FILE} --ica-project-name {ICA_PROJECT_NAME} --nf-core-mode 
+
+[OPTIONAL PARAMETER]
+--git-repos {GIT_HUB_URL}
 ```
 
-In summary, you will need the following prerequisites, either to run the wrapper referenced above or to carry out individual steps below.
+```GIT_HUB_URL``` can be specified to grab pipeline code from github. If you intend to liftover anything in the master branch, your ```GIT_HUB_URL``` might look like ```https://github.com/keng404/my_pipeline```. 
+If there is a specific release tag you intend to use, you can use the convention ```https://github.com/keng404/my_pipeline:my_tag```
+
+In summary, you will may need the following prerequisites, either to run the wrapper referenced above or to carry out individual steps below.
 - 1) ```git clone``` nf-core pipelines of interest
 - 2) Install the python module ```nf-core``` and create a JSON file using the command line ```nf-core list --json > {PIPELINE_JSON_FILE}```
 
-** For non nf-core pipelines, you can try to generate a parameters XML and modify the NF scripts of your pipeline by using the ```nf-core.ica_mod_nf_script.R ``` script. Just be sure to add the ```generate-xml``` flag to enable the creation of an XML file and ```--enable-dsl2``` flag to have the script appropriately handle Nextflow workflows implemented in DSL2.
 
-
-**DSL2 compatibility is now implemented but needs to be tested (i.e. successful pipeline runs)**
+# detailed step-by-step breakdown of what ```nf-core.conversion_wrapper.R``` does for each nextflow pipeline
 
 ## Step 1: To generate an XML file from nf-core pipeline ( your pipeline has a [nextflow_schema.json](https://nf-co.re/pipeline_schema_builder))
 ```bash
@@ -56,14 +85,6 @@ Rscript create_xml/nf-core.json_to_params_xml.R --json {PATH_TO_SCHEMA_JSON}
 nf-core schema build -d {PATH_NF-CORE_DIR}
 ```
 
-######### TO-UPDATE
-## Step 1b: To generate an XML file and edits to Nextflow script, use the following template
-```bash
-Rscript  nf-core.ica_mod_nf_script.R --nf-script {MAIN_NF_SCRIPT} --nf-config {DEFAULT_NF_CONFIG}  [OPTIONAL: --parameters-xml {PATH} or --generate-parameters-xml] --intermediate-copy-template {PATH_TO_RSCRIPTS}/dummy_template.txt
-```
-Specifying the ```--parameters-xml``` parameter tells the ```nf-core.ica_mod_nf_script.R``` to generate an XML files based on the NF script and config you specify.
-Default behavior is to traverse the config file you provide and parse additional config files that might be referenced. Not setting the ```--parameters-xml``` flag will tell the script to just focus on making edits to NF script.
-#################
 
 ## Step 2: Create an ```nextflow.config``` and a ```base config``` file so that it is compatible with ICA.
 ```bash
@@ -72,20 +93,40 @@ Rscript ica_nextflow_config.test.R --config-file {DEFAULT_NF_CONFIG} [OPTIONAL: 
 This script will update your configuration files so that it integrates better with ICA. The flag ```--is-simple-config``` will create a base config file from a template, this flag will also be active if no arguments are supplied to ```--base-config-files```.
 
 
-A current list of todos for this script is [here](https://github.com/keng404/nextflow-to-icav2/blob/master/todos.nf_editing_for_icav2.md)
+## Step 3: Adding helper-debug code and other modifications to your nextflow pipeline
+``` bash 
+Rscript develop_mode.downstream.R  --config-file {DEFAULT_NF_CONFIG} --nf-script {MAIN_NF_SCRIPT} --other-workflow-scripts {OTHER_NF_SCRIPT1 } --other-workflow-scripts {OTHER_NF_SCRIPT2} ...  --other-workflow-scripts {OTHER_NF_SCRIPT_N}
+```
 
-## Step 3: To create a pipeline in ICA, you can use the following helper script ```nf-core.create_ica_pipeline.R```
+This step add some updates you your module scripts to allow for easier troubleshooting (i.e. copy work directory back to ICA if an analysis fails) and to allow for ICA's orchestration of your nextflow pipeline
+to properly handle any script/binary in your ```bin/``` directory of your pipeline ```$projectDir```.
+
+### Step 4: Update XML to add parameter options --- if your pipeline uses/could use iGenomes
+```bash
+Rscript update_xml_based_on_additional_configs.R --config-file {DEFAULT_NF_CONFIG} --parameters-xml {PARAMETERS_XML}
+ ```
+
+You may have to edit your ```{PARAMETERS_XML}``` file if these edits are unnecessary
+
+### Step 5: Sanity check your pipeline code to see if it is valid prior to uploading it into ICA
+```bash
+Rscript testing_pipelines/test_nextflow_script.R --nextflow-script {MAIN_NF_SCRIPT} --docker-image nextflow/nextflow:22.04.3 --nextflow-config {DEFAULT_NF_CONFIG}
+```
+
+[NOTE: 04-10-2023] Currently ICA supports nextflow versions ```nextflow/nextflow:22.04.3``` and ```nextflow/nextflow:20.10.0```
+
+## Step 6: To create a pipeline in ICA, you can use the following helper script ```nf-core.create_ica_pipeline.R```
 ```bash
 Rscript nf-core.create_ica_pipeline.R --nextflow-script {NF_SCRIPT} --workflow-language nextflow --parameters-xml {PARAMETERS_XML} --nf-core-mode --ica-project-name {NAME} --pipeline-name {NAME} --api-key-file {PATH_TO_API_KEY_FILE}
 ```
 
 ### developer mode --- if you plan to develop or modify a pipeline in ICA
-Add the flag ```--simple-mode``` to the command line above if you have custom groovy libraries or modules files your workflow references. What this script will do when this flag is specified is to upload these files and directories to ICA and to update the parameter XML file to allow you to specify directories under the parameters project_dir and files under input_files. This will ensure that these files and directories will be placed in the ```workflow.launchDir``` when the pipeline is invoked.
+Add the flag ```--developer-mode``` to the command line above if you have custom groovy libraries or modules files your workflow references. What this script will do when this flag is specified is to upload these files and directories to ICA and to update the parameter XML file to allow you to specify directories under the parameters project_dir and files under input_files. This will ensure that these files and directories will be placed in the ```$workflow.launchDir``` when the pipeline is invoked.
 
-# As a convenience, one can also get a templated CLI command to help them run a pipeline in ICA via the following:
+# How to run a pipeline in  ICA via CLI
+As a convenience, one can also get a templated CLI command to help users run a pipeline (i.e. submit a pipeline request) in ICA via the following:
 ```bash
 Rscript launch_pipeline_mock_pipeline_cli.R --pipeline-name {PIPELINE_NAME} --workflow-language {xml or nextflow} --parameters-xml {PATH_TO_PARAMETERS_XML}
 ```
 
-By default, this script will automatically try to upload all files found in the same directory as your {NF_SCRIPT}, excluding any nextflow config files (i.e. *config)
-
+By default, this script will automatically try to upload all files found in the same directory as your ```{NF_SCRIPT}```, excluding any nextflow config files (i.e. *config)
