@@ -28,7 +28,7 @@ These scripts have been made to be compatible with [nf-core](https://github.com/
 
 # Using these scripts
 
-The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-icav2:0.0.9```
+The scripts mentioned below can be run in a docker image ```TBD```
 
 You'll first need to download the python module from nf-core via a ```pip install nf-core``` command
 Then you can use nf-core list --json to return a JSON metadata file containing current pipelines in the nf-core repository. You can choose which pipelines to  ```git clone``` but as a convenience, the wrapper ```nf-core.conversion_wrapper.R ``` will perform a git pull, parse nextflow_schema.json files and generate parameter XML files, and then read configuration and nextflow scripts and make some initial modifications for ICA development. Lastly these pipelines are created in an ICA project of your choosing. So you will need to generate and download an API key from the ICA domain of your choosing.
