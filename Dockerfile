@@ -12,7 +12,9 @@ COPY legacy /usr/local/bin/
 COPY create_xml /usr/local/bin/
 COPY create_pipeline_on_ica /usr/local/bin/
 ENV PATH $PATH:/usr/local/bin/testing_pipelines:/usr/local/bin/design_docs:/usr/local/bin/pipeline_development:/usr/local/bin/ica_configure:/usr/local/bin/launch_pipelines:/usr/local/bin/legacy:/usr/local/bin/create_xml:/usr/local/bin/create_pipeline_on_ica
-### install R packages 
+### install R packages
+RUN apt-get install -y libssl-dev  ca-certificates build-essential && \
+        update-ca-certificates
 RUN Rscript /usr/local/bin/install_packages.R
 ENV CLI_VERSION "2.2.0"
 ### install ica CLI
@@ -34,14 +36,12 @@ ENV NFCORE_TOOLS_VERSION "2.7.2"
 ##################################
 RUN wget --no-check-certificate "https://github.com/nf-core/tools/archive/refs/tags/${NFCORE_TOOLS_VERSION}.zip" && \
     unzip ${NFCORE_TOOLS_VERSION}.zip && \
-    cd tools-${NFCORE_TOOLS_VERSION} && \
-    python3 setup.py install && \
-    cd /usr/local/bin/
-#RUN pip3 install nf-core && \
-#    nf-core list --json > /usr/local/bin/nf-core.pipeline.json
-RUN apt-get install -y libssl-dev  ca-certificates build-essential && \
-	update-ca-certificates  
-### copy nextflow templates for copying intermediate files + logs from ICA
+    rm ${NFCORE_TOOLS_VERSION}.zip
+
+RUN apt-get install -y python3.11-venv && \
+    python3 -m venv /usr/local/bin/myvirt && \
+    /usr/local/bin/myvirt/bin/pip3 install nf-core
+ENV PATH $PATH:/usr/local/bin/myvirt/bin
 COPY *.txt /usr/local/bin/
 COPY *.config /usr/local/bin/
 WORKDIR /usr/local/bin

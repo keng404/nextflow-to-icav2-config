@@ -905,7 +905,8 @@ if(dir.exists(binary_dir)){
       rlog::log_info(paste("ADDING",files_of_interest[f]))
       scripts_to_absolute_path[[files_of_interest[f]]] = paste("bin/",basename_files_of_interest[f],sep="")
     } else{
-      rlog::log_info(paste("IGNORING:",files_of_interest[f]))
+      rlog::log_warn(paste("SHOULD I BE IGNORING:",files_of_interest[f]))
+      scripts_to_absolute_path[[files_of_interest[f]]] = paste("bin/",basename_files_of_interest[f],sep="")
     }
   }
 }
@@ -919,7 +920,8 @@ if(dir.exists(assets_dir)){
       rlog::log_info(paste("ADDING",files_of_interest[f]))
       scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
     } else{
-      rlog::log_info(paste("IGNORING:",files_of_interest[f]))
+      rlog::log_warn(paste("SHOULD I BE IGNORING:",files_of_interest[f]))
+      scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
     }
   }
 }
@@ -939,7 +941,7 @@ if(sum(pipeline_sub_dirs_of_interest) > 0){
     }
   }
 }
-print(names(scripts_to_absolute_path))
+#print(names(scripts_to_absolute_path))
 ####
 second_pass_find_executable_language <- function(script){
   script_filename_split = strsplit(script,"/")[[1]]
@@ -986,9 +988,10 @@ override_nextflow_script_command <- function(script,associated_cmd){
       updated_cmd = paste("'",updated_cmd,"'",sep="")
     #}
   }
-  return(paste("",updated_cmd,sep ="\t",collapse=""))
+  #return(paste("",updated_cmd,sep ="\t",collapse=""))
+  return(paste("",paste(updated_cmd,collapse=" "),sep="    "))
 }
-
+##print(scripts_to_absolute_path)
 ## function to update module based on these conditions
 absolute_path_update_module <- function(module_file){
   module_file_data = read.delim(module_file,quote="",header=F)
@@ -1010,33 +1013,42 @@ absolute_path_update_module <- function(module_file){
         basename_path_lookup = scripts_to_absolute_path[[paths_of_interest[poi]]]
         if(sum(basename(relative_path_lookup) %in% module_line_split) > 0){
           replacement_value = paste("${workflow.launchDir}/",basename_path_lookup,sep="")
+          basename_path_lookup = paste(dirname(nf_script),"/",basename_path_lookup,sep="")
           found_update = TRUE
           found_updates = TRUE
-          rlog::log_info(paste("relative_path_lookup:",relative_path_lookup))
           if(!grepl("launchDir",module_line_split[module_line_split %in% basename(relative_path_lookup)] )){
+            rlog::log_info(paste("relative_path_lookup:",basename_path_lookup,"replacement_value:",replacement_value))
             replacement_value = override_nextflow_script_command(basename_path_lookup,replacement_value)
             module_line_split[module_line_split %in% relative_path_lookup] = replacement_value
           }
+          break
         } else if(sum(basename(basename_path_lookup) %in% module_line_split)>0){
           replacement_value = paste("${workflow.launchDir}/",basename_path_lookup,sep="")
+          basename_path_lookup = paste(dirname(nf_script),"/",basename_path_lookup,sep="")
           found_update = TRUE
           found_updates = TRUE
-          rlog::log_info(paste("basename_path_lookup:",basename_path_lookup))
           if(!grepl("launchDir",module_line_split[module_line_split %in% basename_path_lookup] )){
+            rlog::log_info(paste("basename_path_lookup:",basename_path_lookup,"replacement_value:",replacement_value))
             replacement_value = override_nextflow_script_command(basename_path_lookup,replacement_value)
             module_line_split[module_line_split %in% basename_path_lookup] = replacement_value
           }
+          break
         } else if(sum(apply(t(module_line_split),2,function(x) grepl("executor",x)))>0 & sum(apply(t(module_line_split),2,function(x) grepl("local",x)))>0){
           found_update = TRUE
           found_updates = TRUE
           remove_line = TRUE
-        } else if(sum(apply(t(module_line_split),2,function(x) grepl("conda",x)))>0 ){
+          break
+        } else if(module_line_split[1] == "conda"){ 
+        #else if(sum(apply(t(module_line_split),2,function(x) grepl("conda",x)))>0 ){
           found_update = TRUE
           found_updates = TRUE
           remove_line = TRUE
+          break
         }
       }
     }
+    rlog::log_info(paste("LINE_NUM:",idx,"found_update:",found_update,"found_updates:",found_updates,"remove_line:",remove_line,collapse = " ",sep = " "))
+    rlog::log_info(paste("CANDIDATE_LINE:\t",module_line_split,collapse = " ", sep = " "))
     if(found_update){
       if("template" %in% module_line_split){
         #module_line_split = module_line_split[module_line_split != "template"]
@@ -1064,7 +1076,8 @@ absolute_path_update_module <- function(module_file){
         # work around to turn local jobs into a kubernetes job
         rlog::log_warn(paste("REMOVING LINE:", paste(module_line_split,collapse = " ",sep = " ")))
         #new_line = paste("\tcontainer","'nextflow/nextflow:22.04.3'")
-        if(sum(apply(t(module_line_split),2,function(x) x[1] == "conda")) == 0){
+        #if(sum(apply(t(module_line_split),2,function(x) x[1] == "conda")) == 0){
+        if(module_line_split[1] != "conda"){
           new_line = paste("\tcpus","2")
           updated_lines[idx,] = new_line
         } else{
@@ -1089,6 +1102,7 @@ absolute_path_update_module <- function(module_file){
 #### apply function above to all nextflow module files
 module_dir = paste(dirname(nf_script),"modules",sep="/") ### make this configurable at runtime for one-off executions
 module_files = list.files(module_dir,full.names=TRUE,recursive=TRUE)
+module_files = module_files[apply(t(module_files),2,function(x) !grepl(".tmp$",basename(x)))]
 if(length(module_files) > 0 ){
   if(length(names(scripts_to_absolute_path)) > 0) {
     for( m in 1:length(module_files)){

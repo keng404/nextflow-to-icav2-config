@@ -107,12 +107,12 @@ timestamp_diff_good <- function(pipeline_object,timestamp_cutoff=time_from_last_
   return(releases_good)
 }
 ##################
+nf_pipelines_metadata = list()
 if(!is.null(input_json)){
   pipeline_metadata = rjson::fromJSON(file=input_json)
   
   ### grab metadata for NF pipelines
   number_of_pipelines = length(pipeline_metadata$remote_workflows)
-  nf_pipelines_metadata = list()
   for(i in 1:number_of_pipelines){
     pipeline_releases = pipeline_metadata$remote_workflows[[i]][["releases"]]
     if(length(pipeline_metadata$remote_workflows[[i]][["releases"]]) > 0 ){
@@ -191,7 +191,7 @@ if(!is.null(input_json)){
       }
       nf_pipeline_metadata = list()
       nf_pipeline_metadata[["name"]] = pipeline_name
-      nf_pipeline_metadata[["github_link"]] = pipeline_github_link
+      nf_pipeline_metadata[["github_link"]] = git_repo_base_url
       if(!is.null(git_branches_to_try)){
          nf_pipeline_metadata[["release_branch"]] = git_branches_to_try
       } else{

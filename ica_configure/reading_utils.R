@@ -236,7 +236,10 @@ get_other_lines_from_config <- function(conf_file){
       if(!custom_params_to_ignore_closure & !in_manifest_closure){
         lines_to_keep = c(lines_to_keep,conf_data[i,])
       } else if(!custom_params_to_ignore_closure & in_manifest_closure){
+        # hacky override to allow for ICA compatible nextflow version
+
         lines_to_migrate = c(lines_to_migrate,conf_data[i,])
+  
       } else{
         rlog::log_warn((paste("NOT KEEPING LINE:",conf_data[i,])))
       }
@@ -270,8 +273,12 @@ second_pass_config_other_lines <- function(conf_other_lines){
   previous_line_status[["in_nested_expression_to_ignore"]] = in_nested_expression_to_ignore
   for(i in 1:length(conf_other_lines)){
     rlog::log_info(paste("SECOND_PASS ON CONFIG LINE:",conf_other_lines[i]))
-    line_split = strsplit(conf_other_lines[i],"\\s+")[[1]]
-    clean_line = line_split
+    if(length(conf_other_lines[i])>0){
+      line_split = strsplit(conf_other_lines[i],"\\s+")[[1]]
+      clean_line = line_split
+    } else{
+        next
+    }
     for(t in 1:length(line_split)){
       sanitized_token = trimws(line_split[t])
       sanitized_token = gsub("'","\"",sanitized_token)
@@ -368,7 +375,26 @@ second_pass_config_other_lines <- function(conf_other_lines){
       }
     } else if(in_manifest_closure & ! custom_params_to_ignore_closure & !in_nested_expression_to_ignore){
       rlog::log_info(paste("LINE TO MIGRATE:",conf_other_lines[i]))
-      lines_to_migrate = c(lines_to_migrate,conf_other_lines[i])
+      
+      ### override nextflow version to an ICA compatible nextflow version
+      if(grepl("nextflowVersion",conf_other_lines[i])){
+        rlog::log_info(paste("NXF_VERSION POTENTIAL_OVERRIDE:",conf_other_lines[i]))
+        update_line = conf_other_lines[i]
+        update_line_split = strsplit(update_line,"\\=")[[1]]
+        update_line_split = update_line_split[update_line_split != ""]
+        update_line_split = strsplit(update_line_split[length(update_line_split)],"\\=")[[1]]
+        rlog::log_info(paste(update_line_split))
+        update_line_split[1] = gsub("'","",update_line_split[1])
+        version_split = strsplit(update_line_split[1],"\\.")[[1]]
+        rlog::log_info(paste("nextflow version:",paste(version_split,sep=".",paste=".")))
+        if(strtoi(version_split[1]) > 21){
+          update_line = sub(version_split[1],"21",update_line)
+        }
+        rlog::log_info(paste("LINE TO MIGRATE_UPDATED:",update_line))
+        lines_to_migrate = c(lines_to_migrate,update_line)
+      } else{
+        lines_to_migrate = c(lines_to_migrate,conf_other_lines[i])
+      }
     } else if(in_expression){
       rlog::log_info(paste("FOUND EXPRESSION LINE:",conf_other_lines[i]))
       lines_to_keep = c(lines_to_keep,conf_other_lines[i])
