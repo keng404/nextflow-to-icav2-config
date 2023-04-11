@@ -357,6 +357,9 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
   for(i in 1:length(cols_to_add)){
     col_to_add = cols_to_add[i]
     col_idx = (1:length(full_spreadsheet_header))[full_spreadsheet_header %in% col_to_add]
+    rlog::log_info(paste("Adding column:",col_to_add))
+    add_col = c()
+    print(full_spreadsheet_header)
     if(sum("enum" %in% names(field_metadata[[col_to_add]]))){
       possible_enums = field_metadata[[col_to_add]][["enum"]]
       #add_col = rep(possible_enums[length(possible_enums)],nrow(spreadsheet_lines))
@@ -367,14 +370,60 @@ create_dummy_columns <- function(cols_to_add,field_metadata,spreadsheet_lines,fu
       vals_of_interest = gsub("\\(|\\)","",vals_of_interest)
       vals_of_interest_split = strsplit(vals_of_interest,"\\|")[[1]]
      # add_col = rep(vals_of_interest_split[length(vals_of_interest_split)],nrow(spreadsheet_lines))
-      add_col = rep(vals_of_interest_split[1],nrow(spreadsheet_lines))
+      if(!is.na(vals_of_interest_split[1])){
+        add_col = rep(vals_of_interest_split[1],nrow(spreadsheet_lines))
+      } else if(col_to_add == "patient"){
+        add_col = spreadsheet_lines[,colnames(spreadsheet_lines) == "sample",]
+      } else if(col_to_add == "lane"){
+        fastqs = spreadsheet_lines[,colnames(spreadsheet_lines) == "fastq_1"]
+        name_strip = apply(t(fastqs),2, function(x) strsplit(basename(x),"\\.")[[1]][1])
+        for(ii in 1:length(name_strip)){
+          prefix_split = strsplit(name_strip[ii],"\\_")[[1]]
+          for(jj in 1:length(prefix_split)){
+            if(grepl("^L",prefix_split[jj])){
+              prefix_split[jj] = gsub("L","",prefix_split[jj])
+              add_col = c(add_col,paste(col_to_add,strtoi(prefix_split[jj]),sep=""))
+            }
+          }
+        }
+      }  else{
+        add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
+      }
     } else{
       if(sum("type" %in% names(field_metadata[[col_to_add]])) > 0 ){
         if(field_metadata[[col_to_add]][["type"]] == "integer"){
           add_col = rep(1,nrow(spreadsheet_lines))
-        } else{
+        } else if(col_to_add == "patient"){
+          add_col = spreadsheet_lines[,colnames(spreadsheet_lines) == "sample"]
+        } else if(col_to_add == "lane"){
+          fastqs = spreadsheet_lines[,colnames(spreadsheet_lines) == "fastq_1"]
+          name_strip = apply(t(fastqs),2, function(x) strsplit(basename(x),"\\.")[[1]][1])
+          for(ii in 1:length(name_strip)){
+            prefix_split = strsplit(name_strip[ii],"\\_")[[1]]
+            for(jj in 1:length(prefix_split)){
+              if(grepl("^L",prefix_split[jj])){
+                prefix_split[jj] = gsub("L","",prefix_split[jj])
+                add_col = c(add_col,paste(col_to_add,strtoi(prefix_split[jj]),sep=""))
+              }
+            }
+          }
+        }  else{
           add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
         }
+      } else if(col_to_add == "lane"){
+        fastqs = spreadsheet_lines[,colnames(spreadsheet_lines) == "fastq_1"]
+        name_strip = apply(t(fastqs),2, function(x) strsplit(basename(x),"\\.")[[1]][1])
+        for(ii in 1:length(name_strip)){
+          prefix_split = strsplit(name_strip[ii],"\\_")[[1]]
+          for(jj in 1:length(prefix_split)){
+            if(grepl("^L",prefix_split[jj])){
+              prefix_split[jj] = gsub("L","",prefix_split[jj])
+              add_col = c(add_col,paste(col_to_add,strtoi(prefix_split[jj]),sep=""))
+            }
+          }
+        }
+      }  else if(col_to_add == "patient"){
+        add_col = spreadsheet_lines[,colnames(spreadsheet_lines) == "sample",]
       } else{
         add_col = paste(col_to_add,1:nrow(spreadsheet_lines),sep="")
       }
@@ -419,6 +468,7 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   if(sum(found_data_types_assumed) > 0 ) {
   spreadsheet_header = spreadsheet_header[(spreadsheet_header %in% fields_assumed | spreadsheet_header %in% cols_to_add)]
   spreadsheet_lines = c()
+  headers_added = c()
   # assume paired-end
   demo_files = apply(t(demo_dataset[["filenames"]]),2,basename)
   sample_ids = apply(t(demo_files),2,function(x){ x1=strsplit(x,"\\.")[[1]]; x2=strsplit(x1[1],"\\_")[[1]][1]; return(x2)})
@@ -460,6 +510,7 @@ create_dummy_spreadsheet <- function(pipeline_name,input_schema_json,demo_datase
   print(cat(head(spreadsheet_lines)))
   if(length(cols_to_add) >0){
     print(cols_to_add)
+    colnames(spreadsheet_lines) = spreadsheet_header[!spreadsheet_header %in% cols_to_add]
     spreadsheet_lines = create_dummy_columns(cols_to_add,field_metadata,spreadsheet_lines,spreadsheet_header)
     spreadsheet_header = c(spreadsheet_header,cols_to_add)
     spreadsheet_header = unique(spreadsheet_header)
