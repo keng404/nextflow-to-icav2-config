@@ -2,6 +2,16 @@
 R-based helper scripts to generate XML files and modifications to NF scripts/configuration files for ICAv2 compatiblity.
 This is an unofficial developer tool to help them develop Nextflow pipelines that will run successfully on ICA. There are some syntax bugs that may get introduced in your nextflow code. One suggestion is to run the steps as described below and then open up these files in VisualStudio Code with the nextflow plugin installed. You may also need to run smoke tests on your code to identify syntax errors you might not catch upon first glance. 
 
+This is not an official Illumina product, but is intended to make your nextflow experience in ICA more fruitful
+
+```bash
+Some additional repos that can help with your ICA experience can be found below:
+  - relaunch pipeline analysis [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/relaunch_pipeline.py)  and [this](https://github.com/keng404/bssh_parallel_transfer/blob/master/requeue.md)
+  - Monitor your analysis run in ICA and troubleshoot [here](https://github.com/keng404/monitor_ica_analysis_run)
+  - wrapping a WDL-based workflow in a [CWL wrapper](https://github.com/keng404/wdl_test)
+  - wrapping a nextflow-based workflow in a [CWL wrapper](https://github.com/keng404/nextflow_test)
+```
+
 ## local testing your nextflow pipeline after using these scripts
 This [naive wrapper](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/test_nextflow_script.R) will allow you to test your main.nf script. If you have a nextflow pipeline that is more nf-core like (i.e. where you may have several subworkflow and module files) this [script](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/nextflow_extended_local_testing.R) may be more appropriate. Any and all comments are welcome.
 
@@ -90,7 +100,7 @@ In summary, you will may need the following prerequisites, either to run the wra
 - 2) Install the python module ```nf-core``` and create a JSON file using the command line ```nf-core list --json > {PIPELINE_JSON_FILE}```
 
 
-# detailed step-by-step breakdown of what ```nf-core.conversion_wrapper.R``` does for each nextflow pipeline
+# A detailed step-by-step breakdown of what ```nf-core.conversion_wrapper.R``` does for each nextflow pipeline
 
 ## Step 1: To generate an XML file from nf-core pipeline ( your pipeline has a [nextflow_schema.json](https://nf-co.re/pipeline_schema_builder))
 ```bash
@@ -147,3 +157,6 @@ Rscript launch_pipeline_mock_pipeline_cli.R --pipeline-name {PIPELINE_NAME} --wo
 ```
 
 By default, this script will automatically try to upload all files found in the same directory as your ```{NF_SCRIPT}```, excluding any nextflow config files (i.e. *config)
+
+# additional todos
+[todos](https://github.com/keng404/nextflow-to-icav2-config/blob/main/todos.2023_02_23.md)
