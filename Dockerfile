@@ -13,7 +13,8 @@ COPY create_xml /usr/local/bin/
 COPY create_pipeline_on_ica /usr/local/bin/
 ENV PATH $PATH:/usr/local/bin/testing_pipelines:/usr/local/bin/design_docs:/usr/local/bin/pipeline_development:/usr/local/bin/ica_configure:/usr/local/bin/launch_pipelines:/usr/local/bin/legacy:/usr/local/bin/create_xml:/usr/local/bin/create_pipeline_on_ica
 ### install R packages
-RUN apt-get install -y libssl-dev  ca-certificates build-essential && \
+RUN apt-get update -y && \
+    apt-get install -y libssl-dev  ca-certificates build-essential && \
         update-ca-certificates
 RUN Rscript /usr/local/bin/install_packages.R
 ENV CLI_VERSION "2.2.0"

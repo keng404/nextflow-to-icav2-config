@@ -920,8 +920,8 @@ if(dir.exists(assets_dir)){
       rlog::log_info(paste("ADDING",files_of_interest[f]))
       scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
     } else{
-      rlog::log_warn(paste("SHOULD I BE IGNORING:",files_of_interest[f]))
-      scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
+      rlog::log_warn(paste("IGNORING:",files_of_interest[f]))
+      #scripts_to_absolute_path[[files_of_interest[f]]] = paste("assets/",basename_files_of_interest[f],sep="")
     }
   }
 }
