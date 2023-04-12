@@ -5,6 +5,7 @@ library(stringr)
 source('ica_configure/reading_utils.R')
 source('ica_configure/writing_utilities.R')
 source('ica_configure/functional_utilities.R')
+source('workflow_events_parser.R')
 # create parser object
 parser <- ArgumentParser()
 # specify our desired options 
@@ -47,6 +48,21 @@ other_workflow_scripts = other_workflow_scripts[other_workflow_scripts != ""]
 configs_to_ignore = args$configs_to_ignore
 configs_to_ignore = configs_to_ignore[configs_to_ignore!=""]
 ###################################### add error stub
+comment_out_lines <- function(script_lines,line_numbers){
+  updated_script_lines = script_lines
+  for(i in 1:length(line_numbers)){
+    updated_script_lines[line_numbers[i],] = paste("//",updated_script_lines[line_numbers[i],] ,collapse = " ")
+  }
+  return(updated_script_lines)
+}
+update_on_complete_handler <- function(script,workflow_events_list){
+  nf_script_dat = read.delim(script,quote = "",header=F)
+  updated_lines = comment_out_lines(script_lines =nf_script_dat, workflow_events_list[["workflow.onComplete"]][["line_numbers"]])
+  temp_file = paste(script,".tmp",sep="")
+  rlog::log_info(paste("WRITING out updated NF file with error stub:",script))
+  write.table(x=updated_lines,file=temp_file,sep="\n",quote=F,row.names=F,col.names=F)
+  system(paste("mv",temp_file,script))
+}
 create_error_stub <- function(error_stub){
   new_lines = t(read.delim(error_stub,header=F,quote="",sep="\n"))
   return(c("workflow.onError{ ",new_lines,"}"))
@@ -61,7 +77,7 @@ add_error_stub <- function(nf_file,stub_statements){
   updated_lines = c(nf_file_lines,stub_statements)
   rlog::log_info(paste("WRITING out updated NF file with error stub:",nf_file))
   write.table(x=updated_lines,file=temp_file,sep="\n",quote=F,row.names=F,col.names=F)
-  system(paste("cp",temp_file,nf_file))
+  system(paste("mv",temp_file,nf_file))
   } else{
     rlog::log_warn(paste("ADD stub statements manually",stub_statements,paste("IN_THE_FILE:",nf_file,sep=" "),sep="\n"))
   }
@@ -70,10 +86,38 @@ if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
   error_stub_to_add = create_error_stub(error_stub=error_stub)
   if(length(other_workflow_scripts)>0){
     for(i in 1:length(other_workflow_scripts)){
+      nf_workflow_events = list()
+      # comment out the workflow.onComplete if found in file
+      rlog::log_info(paste("Grabbing workflow events from:",other_workflow_scripts[i]))
+      nf_workflow_events = getWorkflowEvents(script = other_workflow_scripts[i])
+      # helper function to check for malformed workflow event closures --- ignored for now
+      malformed_workflow_event_processes(nf_workflow_events,other_workflow_scripts[i])
+      if(length(names(nf_workflow_events)) > 0){
+        print(nf_workflow_events)
+      }
+      if("workflow.onComplete" %in% names(nf_workflow_events)){
+        update_on_complete_handler(other_workflow_scripts[i],nf_workflow_events)
+      } else{
+        rlog::log_info(paste("No workflow events found in:",other_workflow_scripts[i]))
+      }
       add_error_stub(nf_file=other_workflow_scripts[i],stub_statements=error_stub_to_add)
     }
   }
   if(!is.null(nf_script)){
+    nf_workflow_events = list()
+    rlog::log_info(paste("Grabbing workflow events from:",nf_script))
+    # comment out the workflow.onComplete if found in file
+    nf_workflow_events = getWorkflowEvents(script = nf_script)
+    if(length(names(nf_workflow_events)) > 0){
+      print(nf_workflow_events)
+    }
+    # helper function to check for malformed workflow event closures --- ignored for now
+    malformed_workflow_event_processes(nf_workflow_events,nf_script)
+    if("workflow.onComplete" %in% names(nf_workflow_events)){
+      update_on_complete_handler(nf_script,nf_workflow_events)
+    } else{
+      rlog::log_info(paste("No workflow events found in:",nf_script))
+    }
     add_error_stub(nf_file=nf_script,stub_statements=error_stub_to_add) 
   }
 }
