@@ -53,3 +53,4 @@ Change order params are added so that the params injected comes before params st
 	- try using [diff2html](https://github.com/rtfpessoa/diff2html)
 	- with addition Rmarkdown -> PDF report
 - [ ] 9) Add some comments about docker scope as implemented in nextflow ([DockerBuilder.groovy](https://github.com/nextflow-io/nextflow/blob/master/modules/nextflow/src/main/groovy/nextflow/container/DockerBuilder.groovy))
+- [ ] 10) a html that lists what nf-core pipelines have been lifted over
