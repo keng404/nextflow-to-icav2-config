@@ -4,13 +4,13 @@ This is an unofficial developer tool to help them develop Nextflow pipelines tha
 
 This is not an official Illumina product, but is intended to make your nextflow experience in ICA more fruitful
 
-```bash
+
 Some additional repos that can help with your ICA experience can be found below:
   - relaunch pipeline analysis [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/relaunch_pipeline.py)  and [this](https://github.com/keng404/bssh_parallel_transfer/blob/master/requeue.md)
   - Monitor your analysis run in ICA and troubleshoot [here](https://github.com/keng404/monitor_ica_analysis_run)
   - wrapping a WDL-based workflow in a [CWL wrapper](https://github.com/keng404/wdl_test)
   - wrapping a nextflow-based workflow in a [CWL wrapper](https://github.com/keng404/nextflow_test)
-```
+
 
 ## local testing your nextflow pipeline after using these scripts
 This [naive wrapper](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/test_nextflow_script.R) will allow you to test your main.nf script. If you have a nextflow pipeline that is more nf-core like (i.e. where you may have several subworkflow and module files) this [script](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/nextflow_extended_local_testing.R) may be more appropriate. Any and all comments are welcome.
