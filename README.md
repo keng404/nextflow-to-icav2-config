@@ -11,9 +11,15 @@ Some examples of nextflow pipelines that have been lifted over with this repo ca
 
 # what do these scripts do?
 
-What these scripts do is parse configuration files and the main NF script of a pipeline and update the underlying processes with what's mentioned below.
-Additionally parameters mentioned in these configuration files that are not referenced in the main NF file are brought into the main NF script. 
-
+What these scripts do:
+1) parse configuration files and the  NF script (main.nf, workflows,subworkflows, modules) of a pipeline and update the configuration of the pipeline with pod directives to tell ICA what compute instance to run
+  - strips out parameters that ICA utilizes for workflow orchestration
+  - migrates manifest closure to ```conf/base.ica.config``` file
+  - ensures that docker is enabled
+2) adds ```workflow.onError``` (main.nf, workflows,subworkflows, modules) to aid troubleshooting
+3) modifies the processes that reference scripts and tools in the ```bin/``` directory of a pipeline's ```projectDir``` so that when ICA orchestrates your nextflow pipeline it can find and properly execute your pipeline process.
+4) Generates parameter XML file based on ```nextflow_schema.json, nextflow.config, conf/```
+5) Additional edits to ensure your pipeline runs more smoothly on ICA
 
 # ICA Concepts to better understand ICA liftover of nextflow pipelines
 
@@ -29,7 +35,18 @@ These scripts have been made to be compatible with [nf-core](https://github.com/
 
 The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-icav2-config:0.0.1```
 
+This has:
+  - nf-core installed
+  - All Rscripts in this repo with relevant R libraries installed
+  
+You'll likely need to run the image with a docker command like this for you to be able to run git commands within the container:
+```bash
+docker run -itv `pwd`:`pwd` -e HOME=`pwd` -u $(id -u):$(id -g) keng404/nextflow-to-icav2-config:0.0.1 /bin/bash
+```
+
 # Prerequitsites
+
+## STEP 0 Github credentials
 
 ## STEP 1 [OPTIONAL] : create JSON of nf-core pipeline metadata or specify pipeline of interest
 
