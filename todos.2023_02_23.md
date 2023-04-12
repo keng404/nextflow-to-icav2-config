@@ -50,6 +50,6 @@ Change order params are added so that the params injected comes before params st
 	- Usually has to do with genome/reference configuration. For example [this](https://github.com/keng404/ica_nextflow_demos/blob/master/rnaseq/nextflow.config#L130). I have code to identify and interpret these expresssions, but I need to consume and figure out a creative way to  add this to the XML.  	
 - [X] 7) find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 - [ ] 8) Add a diff between the converted pipeline and the original soure --- generate PDF of differences
-	- try using diff2html
+	- try using [diff2html](https://github.com/rtfpessoa/diff2html)
 	- with addition Rmarkdown -> PDF report
 - [ ] 9) Add some comments about docker scope as implemented in nextflow ([DockerBuilder.groovy](https://github.com/nextflow-io/nextflow/blob/master/modules/nextflow/src/main/groovy/nextflow/container/DockerBuilder.groovy))
