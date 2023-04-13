@@ -43,7 +43,7 @@ if(length(docker_binary_check) > 0){
 if(sum(docker_binary_check_bool) > 0){
   nextflow_cmd = paste("docker run -it --rm",create_mount_string(nextflow_script),docker_image,"nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
 } else{
-  setwdnextflow_cmd
+  setwd(dirname(script_path))
   docker_cmd = paste("nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
   
 }
