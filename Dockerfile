@@ -8,7 +8,6 @@ COPY pipeline_development /usr/local/bin/
 COPY design_docs /usr/local/bin/
 COPY ica_configure /usr/local/bin/
 COPY launch_pipelines /usr/local/bin/
-COPY legacy /usr/local/bin/
 COPY create_xml /usr/local/bin/
 COPY create_pipeline_on_ica /usr/local/bin/
 ENV PATH $PATH:/usr/local/bin/testing_pipelines:/usr/local/bin/design_docs:/usr/local/bin/pipeline_development:/usr/local/bin/ica_configure:/usr/local/bin/launch_pipelines:/usr/local/bin/legacy:/usr/local/bin/create_xml:/usr/local/bin/create_pipeline_on_ica

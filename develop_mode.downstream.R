@@ -93,7 +93,7 @@ add_complete_stub <- function(nf_file){
   rlog::log_info(paste("READING NF file :",nf_file))
   nf_file_lines = t(read.delim(nf_file,header=F,quote="",sep="\n"))
   found_workflow_on_complete_statement = FALSE
-  workflow_on_complete_bool = unlist(apply(t(nf_file_lines),2,function(x) grepl("workflow.onComplete",x)))
+  workflow_on_complete_bool = unlist(apply(t(nf_file_lines),2,function(x) grepl("workflow.onComplete",x) & !grepl("\\/\\/",x) & !grepl("\\/\\*",x)))
   ##if(sum(workflow_on_complete_bool) == 0){
     updated_lines = c(nf_file_lines,stub_statements)
     rlog::log_info(paste("WRITING out updated NF file with complete stub:",nf_file))
@@ -122,8 +122,8 @@ if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
       } else{
         rlog::log_info(paste("No workflow events found in:",other_workflow_scripts[i]))
       }
-      add_complete_stub(nf_file=other_workflow_scripts[i])
       add_error_stub(nf_file=other_workflow_scripts[i],stub_statements=error_stub_to_add)
+      add_complete_stub(nf_file=other_workflow_scripts[i])
     }
   }
   if(!is.null(nf_script)){
@@ -141,8 +141,8 @@ if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
     } else{
       rlog::log_info(paste("No workflow events found in:",nf_script))
     }
-    add_complete_stub(nf_file=nf_script)
     add_error_stub(nf_file=nf_script,stub_statements=error_stub_to_add) 
+    add_complete_stub(nf_file=nf_script)
   }
 }
 ################################### Making edits to XML file
