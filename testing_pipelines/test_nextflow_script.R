@@ -35,11 +35,22 @@ if(!file.exists(main_config)){
     rlog::log_error(paste("Cannot find the script",nextflow_script))
     stop()
 }
-docker_cmd = paste("docker run -it --rm",create_mount_string(nextflow_script),docker_image,"nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
-rlog::log_info(paste("RUNNING CMD:",docker_cmd))
-docker_result = system(docker_cmd,intern = TRUE)
+docker_binary_check = system("which docker",intern = TRUE)
+docker_binary_check_bool = FALSE
+if(length(docker_binary_check) > 0){
+  docker_binary_check_bool = apply(t(docker_binary_check),2, function(x) grepl("docker",x))
+}
+if(sum(docker_binary_check_bool) > 0){
+  nextflow_cmd = paste("docker run -it --rm",create_mount_string(nextflow_script),docker_image,"nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
+} else{
+  setwdnextflow_cmd
+  docker_cmd = paste("nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
+  
+}
+rlog::log_info(paste("RUNNING CMD:",nextflow_cmd))
+nextflow_test_result = system(nextflow_cmd,intern = TRUE)
 #####################
-docker_command_error <- function(cmd_out){
+nextflow_command_error <- function(cmd_out){
   error_in_output = FALSE
   error_in_line = apply(t(cmd_out),2,function(x) grepl("error|groovy|fail",x,ignore.case = TRUE))
   please_in_line = apply(t(cmd_out),2,function(x) grepl("please",x,ignore.case = TRUE))
@@ -50,7 +61,7 @@ docker_command_error <- function(cmd_out){
 }
 ################
 
-error_check = docker_command_error(docker_result)
+error_check = nextflow_command_error(nextflow_test_result)
 #print(docker_result)
 lines_of_interest = apply(t(docker_result),2,function(x) grepl("Missing",x))
 #print(lines_of_interest)
@@ -75,7 +86,7 @@ if(sum(lines_of_interest) >0){
 }
 if(error_check & !xml_pass){
   rlog::log_error(paste("SCRIPT:",nextflow_script,"ERROR"))
-  rlog::log_error(paste("OUTPUT:",docker_result))
+  rlog::log_error(paste("OUTPUT:",nextflow_test_result))
 } else{
   rlog::log_info(paste("SCRIPT:",nextflow_script,"PASSED"))
 }
