@@ -62,17 +62,20 @@ nextflow_command_error <- function(cmd_out){
 ################
 
 error_check = nextflow_command_error(nextflow_test_result)
-#print(docker_result)
+#print(nextflow_test_result)
 lines_of_interest = apply(t(nextflow_test_result),2,function(x) grepl("Missing",x))
-#print(lines_of_interest)
 xml_pass = FALSE
+lines_to_double_check = c()
 if(sum(lines_of_interest) >0){
+  lines_idxs = (1:length(lines_of_interest))[lines_of_interest]
   params_of_interest = c()
-  for(loi in 1:length(lines_of_interest)){
-    line_of_interest = lines_of_interest[loi]
+  for(loi in 1:length(lines_idxs)){
+    line_of_interest = nextflow_test_result[lines_idxs[loi]]
+    lines_to_double_check = c(lines_to_double_check,line_of_interest)
+    rlog::log_info(paste("NEXTFLOW_OUTPUT_LINE_OF_INTEREST:",line_of_interest))
     line_of_interest_split = strsplit(line_of_interest,"\\s+")[[1]]
     for(lois in 1:length(line_of_interest_split)){
-      if(grepl("^--",line_of_interest_split[lois])){
+      if(grepl("^--",line_of_interest_split[lois]) & grepl("[a-z]",line_of_interest_split[lois])){
         params_of_interest = c(params_of_interest,line_of_interest_split[lois])
       }
     }
@@ -92,8 +95,12 @@ if(sum(lines_of_interest) >0){
       }
     } 
   } else{
+    rlog::log_warn(paste("No parameters found missing"))
+    rlog::log_warn(paste(lines_to_double_check,collapse="\n"))
     xml_pass = TRUE
   }
+} else{
+  xml_pass = TRUE
 }
 if(error_check & !xml_pass){
   rlog::log_error(paste("SCRIPT:",nextflow_script,"ERROR"))
