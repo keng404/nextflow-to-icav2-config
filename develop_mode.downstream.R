@@ -67,6 +67,10 @@ create_error_stub <- function(error_stub){
   new_lines = t(read.delim(error_stub,header=F,quote="",sep="\n"))
   return(c("workflow.onError{ ",new_lines,"}"))
 }
+create_complete_stub <- function(){
+  #new_lines = t(read.delim(complete_stub,header=F,quote="",sep="\n"))
+  return(c("workflow.onComplete{ ","println(\"Pipeline Completed Successfully\")","System.exit(0)","}"))
+}
 add_error_stub <- function(nf_file,stub_statements){
   temp_file = paste(nf_file,".tmp",sep="")
   rlog::log_info(paste("READING NF file :",nf_file))
@@ -82,6 +86,24 @@ add_error_stub <- function(nf_file,stub_statements){
     rlog::log_warn(paste("ADD stub statements manually",stub_statements,paste("IN_THE_FILE:",nf_file,sep=" "),sep="\n"))
   }
 }
+
+add_complete_stub <- function(nf_file){
+  stub_statements = create_complete_stub()
+  temp_file = paste(nf_file,".tmp",sep="")
+  rlog::log_info(paste("READING NF file :",nf_file))
+  nf_file_lines = t(read.delim(nf_file,header=F,quote="",sep="\n"))
+  found_workflow_on_complete_statement = FALSE
+  workflow_on_complete_bool = unlist(apply(t(nf_file_lines),2,function(x) grepl("workflow.onComplete",x)))
+  ##if(sum(workflow_on_complete_bool) == 0){
+    updated_lines = c(nf_file_lines,stub_statements)
+    rlog::log_info(paste("WRITING out updated NF file with complete stub:",nf_file))
+    write.table(x=updated_lines,file=temp_file,sep="\n",quote=F,row.names=F,col.names=F)
+    system(paste("mv",temp_file,nf_file))
+  ##} else{
+  ##  rlog::log_warn(paste("ADD stub statements manually",stub_statements,paste("IN_THE_FILE:",nf_file,sep=" "),sep="\n"))
+  ##}
+}
+
 if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
   error_stub_to_add = create_error_stub(error_stub=error_stub)
   if(length(other_workflow_scripts)>0){
@@ -100,6 +122,7 @@ if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
       } else{
         rlog::log_info(paste("No workflow events found in:",other_workflow_scripts[i]))
       }
+      add_complete_stub(nf_file=other_workflow_scripts[i])
       add_error_stub(nf_file=other_workflow_scripts[i],stub_statements=error_stub_to_add)
     }
   }
@@ -118,6 +141,7 @@ if(length(other_workflow_scripts) > 0 | !is.null(nf_script)){
     } else{
       rlog::log_info(paste("No workflow events found in:",nf_script))
     }
+    add_complete_stub(nf_file=nf_script)
     add_error_stub(nf_file=nf_script,stub_statements=error_stub_to_add) 
   }
 }
