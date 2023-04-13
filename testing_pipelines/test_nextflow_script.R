@@ -67,7 +67,7 @@ lines_of_interest = apply(t(nextflow_test_result),2,function(x) grepl("Missing",
 #print(lines_of_interest)
 xml_pass = FALSE
 if(sum(lines_of_interest) >0){
-  params_of_interest = apply(t(docker_result[lines_of_interest]),2,function(x){x1=strsplit(x,"\\s+")[[1]]; return(x1[length(x1)])})
+  params_of_interest = apply(t(nextflow_test_result[lines_of_interest]),2,function(x){x1=strsplit(x,"\\s+")[[1]]; return(x1[length(x1)])})
   if(length(params_of_interest) >0){
     for(pi in 1:length(params_of_interest)){
       param_of_interest = params_of_interest[pi]
