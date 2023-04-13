@@ -54,6 +54,8 @@ You'll likely need to run the image with a docker command like this for you to b
 docker run -itv `pwd`:`pwd` -e HOME=`pwd` -u $(id -u):$(id -g) keng404/nextflow-to-icav2-config:0.0.1 /bin/bash
 ```
 
+where ````pwd```` is your ```$HOME``` directory
+
 # Prerequitsites
 
 ## STEP 0 Github credentials
