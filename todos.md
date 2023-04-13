@@ -56,6 +56,7 @@ Change order params are added so that the params injected comes before params st
 	- upload workflow, module,subworkflow, assets, and bin directories to ICA via the CLI
 	- avoid behavior of creating new versions of pipelines each time
 	- add tag to pipeline metadata?
+		- versionComment in request body for [this ICA API endpoint](https://ica.illumina.com/ica/api/swagger/index.html#/Project%20Pipeline/createNextflowPipeline)
 - [ ] 10) Add some comments about docker scope as implemented in nextflow ([DockerBuilder.groovy](https://github.com/nextflow-io/nextflow/blob/master/modules/nextflow/src/main/groovy/nextflow/container/DockerBuilder.groovy))
 - [ ] 11) a html that lists what nf-core pipelines have been lifted over
 - [ ] 12) Troubleshooting guide --- what if you run into error
