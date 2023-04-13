@@ -63,7 +63,7 @@ nextflow_command_error <- function(cmd_out){
 
 error_check = nextflow_command_error(nextflow_test_result)
 #print(docker_result)
-lines_of_interest = apply(t(docker_result),2,function(x) grepl("Missing",x))
+lines_of_interest = apply(t(nextflow_test_result),2,function(x) grepl("Missing",x))
 #print(lines_of_interest)
 xml_pass = FALSE
 if(sum(lines_of_interest) >0){
