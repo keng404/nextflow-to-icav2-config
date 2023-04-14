@@ -25,12 +25,17 @@ get_params_from_config <- function(conf_file,conf_data = NULL){
     }
     clean_line = clean_line[clean_line!=""]
     line_skip = FALSE
+    if(length(clean_line) ==0){
+      next
+    }
     if(grepl("/",clean_line[1])){
       line_skip = TRUE
     } 
     if(!line_skip && grepl("\\{",conf_data[i,]) && "params" %in% clean_line && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
       rlog::log_info(paste("ENTERING_PARAMS_ENCLOSURE:",conf_data[i,]))
       in_params_closure = TRUE
+    } else if(!line_skip & grepl("=",conf_data[i,]) & !grepl("\\*",clean_line[1]) & !grepl("\\/\\/",clean_line[1])){
+      rlog::log_info(paste("NOT_CHANGING_STATUS:",conf_data[i,]))
     } else if(!line_skip && grepl("\\{",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && !grepl("params",conf_data[i,])){
       in_closure = TRUE
       out_closure = FALSE
@@ -53,6 +58,9 @@ get_params_from_config <- function(conf_file,conf_data = NULL){
           rlog::log_info(paste("ADDING_LINE:",conf_data[i,]))
           lines_to_keep = c(lines_to_keep,conf_data[i,])
         }
+      } else if(!line_skip & grepl("=",conf_data[i,]) & !grepl("\\*",clean_line[1]) & !grepl("\\/\\/",clean_line[1])){
+        rlog::log_info(paste("ADDING_LINE2:",conf_data[i,]))
+        lines_to_keep = c(lines_to_keep,conf_data[i,])
       } else{
         rlog::log_info(paste("OTHER_LINE:",conf_data[i,]))
         if(!line_skip && !grepl("params",conf_data[i,])){
@@ -64,8 +72,14 @@ get_params_from_config <- function(conf_file,conf_data = NULL){
             if( grepl("\\{",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
               nested_param_key = strsplit(conf_data[i,],"\\s+")[[1]]
               nested_param_key = nested_param_key[nested_param_key!=""]
+              nested_param_key_split = strsplit(nested_param_key,"\\{")[[1]]
               nested_param_key = nested_param_key[!grepl("\\{",nested_param_key)]
+              if(length(nested_param_key) == 0){
+                nested_param_key = trimws(nested_param_key_split[1])
+              }
               rlog::log_info(paste("initial_nested_param:",initial_nested_param,"\t","nested_param_key:",nested_param_key))
+              rlog::log_info(paste("RESCUE_LINE2:",conf_data[i,]))
+              lines_to_keep = c(lines_to_keep,conf_data[i,])
             } else{
               if(in_params_closure){
                 rlog::log_info(paste("RESCUE_LINE:",conf_data[i,]))
@@ -182,7 +196,8 @@ get_other_lines_from_config <- function(conf_file){
       rlog::log_info(paste(c("SKIPPING_LINE:",clean_line),collapse = " ",sep = " "))
       next
     }
-    for(t in 1:length(clean_line)){
+    #for(t in 1:length(clean_line)){
+    for(t in 1:1){
       if(grepl("\\/\\*",clean_line[t])){
      ## if(grepl("/*",clean_line[t])){
         ##line_skip = TRUE
@@ -200,6 +215,8 @@ get_other_lines_from_config <- function(conf_file){
     if(!line_skip && grepl("\\{",conf_data[i,]) && "params" %in% clean_line && !grepl("def",conf_data[i,]) && !grepl("if",conf_data[i,]) && !grepl("else",conf_data[i,]) && !grepl("\\(params",conf_data[i,])  && !grepl("\\{params",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,])){
       rlog::log_info(paste("ENTERING_PARAMS_ENCLOSURE:",conf_data[i,]))
       in_params_closure = TRUE
+    } else if(!line_skip & grepl("=",conf_data[i,]) & !grepl("\\*",clean_line[1]) & !grepl("\\/\\/",clean_line[1])){
+      rlog::log_info(paste("NOT_CHANGING_STATUS:",conf_data[i,]))
     } else if(!line_skip && grepl("\\{",conf_data[i,]) && !grepl("\\$\\{",conf_data[i,]) && !grepl("params",conf_data[i,])){
       in_closure = TRUE
       out_closure = FALSE
@@ -229,6 +246,7 @@ get_other_lines_from_config <- function(conf_file){
     } else{
       rlog::log_info(paste("NOT_CHANGING_STATUS:",conf_data[i,]))
     }
+    rlog::log_info(paste("LINE_OF_INTEREST:",conf_data[i,],"LINE_SKIP:",line_skip,"OUT_PARAMS_ENCLOSURE:",out_params_closure,"PARAMS_ENCLOSURE:",in_params_closure,"IN_OTHER_CLOSURE:",in_closure,"IN_COMMENT_BLOCK:",in_comment_block))
     
     ### grab parameters in params enclosure
     if(!line_skip & out_params_closure & !in_params_closure & !in_comment_block){
@@ -244,6 +262,10 @@ get_other_lines_from_config <- function(conf_file){
         rlog::log_warn((paste("NOT KEEPING LINE:",conf_data[i,])))
       }
     } else if(grepl("process",conf_data[i,]) & grepl("container",conf_data[i,])){
+      rlog::log_info(paste("RESCUE_LINE1:",conf_data[i,]))
+      lines_to_keep = c(lines_to_keep,conf_data[i,])
+    } else if(grepl("includeConfig",conf_data[i,]) & !grepl("test",conf_data[i,]) & (grepl("base",conf_data[i,]) | grepl("genome",conf_data[i,])) ){
+      rlog::log_info(paste("RESCUE_LINE2:",conf_data[i,]))
       lines_to_keep = c(lines_to_keep,conf_data[i,])
     }
   }
@@ -260,6 +282,7 @@ second_pass_config_other_lines <- function(conf_other_lines){
   statement_right_brackets = c()
   lines_to_keep = c()
   lines_to_migrate = c()
+  config_lines_rescued = c()
   # 'manifest'
   custom_params_to_ignore = c('report','timeline','trace','dag','env')
   custom_params_to_ignore_closure = FALSE
@@ -398,7 +421,11 @@ second_pass_config_other_lines <- function(conf_other_lines){
     } else if(in_expression){
       rlog::log_info(paste("FOUND EXPRESSION LINE:",conf_other_lines[i]))
       lines_to_keep = c(lines_to_keep,conf_other_lines[i])
-    } 
+    } else if(grepl("includeConfig",conf_other_lines[i]) & !grepl("test",conf_other_lines[i]) & (grepl("base",conf_other_lines[i]) | grepl("genome",conf_other_lines[i])) ){
+      rlog::log_info(paste("RESCUE_LINE2:",conf_other_lines[i]))
+      config_lines_rescued = c(config_lines_rescued,paste(clean_line,collapse =  " "))
+    }
+    
     previous_line_status[["custom_params_to_ignore_closure"]] = custom_params_to_ignore_closure
     previous_line_status[["in_manifest_closure"]] = in_manifest_closure
     previous_line_status[["in_nested_expression_to_ignore"]] = in_nested_expression_to_ignore
@@ -412,6 +439,15 @@ second_pass_config_other_lines <- function(conf_other_lines){
     if(!grepl("\\}",lines_to_migrate[length(lines_to_migrate)])){
       rlog::log_info(paste("Adding left bracket '}' to ensure manifest closure is a proper expression"))
       lines_to_migrate = c(lines_to_migrate,"}")
+    }
+  }
+  
+  if(length(config_lines_rescued) > 0){
+    config_lines_rescued = unique(config_lines_rescued)
+    for(clr in 1:length(config_lines_rescued)){
+      if(!config_lines_rescued[clr] %in% lines_to_keep){
+        lines_to_keep = c(lines_to_keep,config_lines_rescued)
+      }
     }
   }
   

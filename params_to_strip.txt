@@ -25,3 +25,4 @@ params.enable_conda
 params.tracedir
 params.email_on_fail
 params.email
+params.version
