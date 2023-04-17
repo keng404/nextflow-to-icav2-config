@@ -104,7 +104,7 @@ if(is_simple_config | is.null(base_config_files)){
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
-    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path)
+    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
   } else{
     rlog::log_info(paste("No testing config found"))
   }
@@ -151,7 +151,7 @@ if(is_simple_config | is.null(base_config_files)){
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
-    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path)
+    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
   } else{
     rlog::log_info(paste("No testing config found"))
   }

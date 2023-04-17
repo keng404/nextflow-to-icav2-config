@@ -84,7 +84,7 @@ inject_params <- function(params_list, params_to_inject){
 ##########
 
 ###```add_module_reference``` - Add in reference to ```nextflow.config``` file ```includeConfig 'conf/modules.config' ```
-add_module_reference <- function(nextflow_config,existing_module_file=NULL,additional_config='conf/modules.ica.config'){
+add_module_reference <- function(nextflow_config,existing_module_file=NULL,additional_config='conf/modules.ica.config',for_testing=FALSE){
   reference_statement = paste("includeConfig",paste("'",additional_config,"'",collapse="",sep=""),collapse=" ")
   nextflow_config_data = read.delim(nextflow_config,quote="",header=F)
   nextflow_config_data = t(nextflow_config_data)
@@ -96,6 +96,8 @@ add_module_reference <- function(nextflow_config,existing_module_file=NULL,addit
       }
     }
     nextflow_config_data = nextflow_config_data1
+  } else if(for_testing){
+    nextflow_config_data = c(nextflow_config_data,paste("//",reference_statement,collapse = " ",sep= " "))
   } else{
     nextflow_config_data = c(nextflow_config_data,reference_statement)
   }
