@@ -61,7 +61,28 @@ ica_instance_table$CPUs = as.numeric(ica_instance_table$CPUs)
 ica_instance_table$`Mem (GB)` = as.numeric(ica_instance_table$`Mem (GB)`)
 additional_lines = c("process {",'\twithName:\'CUSTOM_DUMPSOFTWAREVERSIONS\' {',"\terrorStrategy = 'ignore'","\t}","}")
 ##############################################
-
+add_test_config <- function(dir_of_interest){
+  test_config = NULL
+  configs = list.files(dir_of_interest,pattern="test*.config",full.names = T,recursive = T)
+  if(length(configs) >0){
+    if("test_full.config" %in% configs){
+      test_config = configs[configs == "test_full.config"]
+      rlog::log_info(paste("Choosing the following test config:",test_config))
+      return(test_config)
+    } else if("test.config" %in% configs){
+      test_config = configs[configs == "test.config"]
+      rlog::log_info(paste("Choosing the following test config:",test_config))
+      return(test_config)
+    } else{
+      rlog::log_info(paste("Choosing the following test config:",configs[1]))
+      return(configs[1])
+    }
+  } else{
+    rlog::log_warn(paste("No test configs found for:",dir_of_interest))
+    return(test_config)
+  }
+}
+################################################
 if(is_simple_config | is.null(base_config_files)){
   # parse config file
   config_params = get_params_from_config(conf_file=config_file)
@@ -80,6 +101,13 @@ if(is_simple_config | is.null(base_config_files)){
   
   # add reference to your module config file
   add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=base_config_relative_path)
+  test_config = add_test_config(dirname(config_file))
+  if(!is.null(test_config)){
+    test_config_file_path = getRelativePath(to=test_config,from=config_file)
+    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path)
+  } else{
+    rlog::log_info(paste("No testing config found"))
+  }
 } else{
   # parse config file
   config_params = get_params_from_config(conf_file=config_file)
@@ -119,6 +147,12 @@ if(is_simple_config | is.null(base_config_files)){
     second_pass_lines[["lines_to_migrate"]]  = c(second_pass_lines[["lines_to_migrate"]] ,additional_lines)
     write_modules(modules_list = updated_base_configuration,output_file=paste(dirname(config_file),base_config_relative_path,sep="/"),template_file=base_config_template,additional_lines = second_pass_lines[["lines_to_migrate"]])
     add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=base_config_file_path,additional_config=base_config_relative_path)
-    
+  }
+  test_config = add_test_config(dirname(config_file))
+  if(!is.null(test_config)){
+    test_config_file_path = getRelativePath(to=test_config,from=config_file)
+    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path)
+  } else{
+    rlog::log_info(paste("No testing config found"))
   }
 }

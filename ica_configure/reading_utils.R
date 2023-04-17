@@ -146,7 +146,135 @@ get_params_from_config <- function(conf_file,conf_data = NULL){
       # remove params
       line_parsed_key_split = line_parsed_key_split[line_parsed_key_split !="params"]
       line_parsed_key_split = paste(line_parsed_key_split,collapse=".")
-      params[[paste("params.",line_parsed_key_split,sep="")]] = line_parsed[3]
+      rlog::log_info(paste("Potential_Value:",paste(line_parsed[3:length(line_parsed)],sep=" ",collapse=" ")))
+      rlog::log_info(paste("line_parsed_length:",length(line_parsed)))
+      if(!grepl("=",line_parsed_key_split)){
+        if(length(line_parsed) >= 3){
+          params[[paste("params.",line_parsed_key_split,sep="")]] = paste(line_parsed[3:length(line_parsed)],sep=" ",collapse=" ")
+        } else{
+          rlog::log_warn(paste("Skipping key:",paste("params.",line_parsed_key_split,sep=""),"skipping value:",paste(line_parsed[3:length(line_parsed)],sep=" ",collapse=" ")))
+          next
+        }
+        # initialize maps if necessary
+        subkeys = stringr::str_extract_all( line_parsed_key_split,"(?<=\\[).*(?=\\])")[[1]]
+        majorkeys = gsub("\\["," ",line_parsed_key_split)[[1]]
+        majorkeys = strsplit(majorkeys,"\\s+")[[1]]
+        majorkeys_bool = apply(t(majorkeys),2,function(x) !grepl("\\]",x))
+        majorkeys = majorkeys[majorkeys_bool]
+        majorkeys = majorkeys[!is.na(majorkeys)]
+        subkeys = subkeys[!is.na(subkeys)]
+        if(length(subkeys)>0){
+          key_collection = c()
+          for(sks in 1:length(subkeys)){
+            key_prefix = "params."
+            key_collection = c(key_collection,paste("[",subkeys[sks],"]",sep="",collapse=""))
+            key_to_check = paste(key_prefix,key_collection,sep="",collapse="")
+            key_to_check_stripped = sub("^params.","",key_to_check)
+            if(!key_to_check %in% names(params) & !grepl("^\\[",key_to_check_stripped) & !grepl("^'",key_to_check_stripped)){
+              params[[key_to_check]] = "[:]"
+            } else{
+              rlog::log_info(paste("Key:",key_to_check,"is already in params"))
+            }
+          }
+        }
+        if(length(majorkeys)>0 & length(subkeys) > 0){
+          key_collection = c()
+          for(sks in 1:length(majorkeys)){
+            key_prefix = "params."
+            key_collection = c(key_collection,paste(majorkeys[sks],sep="",collapse=""))
+            key_to_check = paste(key_prefix,key_collection,sep="",collapse="")
+            key_to_check_stripped = sub("^params.","",key_to_check)
+            if(!key_to_check %in% names(params) & !grepl("^\\[",key_to_check_stripped) & !grepl("^'",key_to_check_stripped)){
+              params[[key_to_check]] = "[:]"
+            } else{
+              rlog::log_info(paste("Key:",key_to_check,"is already in params"))
+            }
+          }
+          
+          for(sks in 1:length(majorkeys)){
+            for(skss in 1:length(subkeys)){
+              key_collection = c()
+              key_prefix = "params."
+              key_collection = c(key_collection,paste(majorkeys[sks],sep="",collapse=""))
+              key_collection = c(key_collection,paste("[",subkeys[skss],"]",sep="",collapse=""))
+              key_to_check = paste(key_prefix,paste(key_collection,sep="",collapse=""),sep="",collapse="")
+              key_to_check_stripped = sub("^params.","",key_to_check)
+              if(!key_to_check %in% names(params) & !grepl("^\\[",key_to_check_stripped) & !grepl("^'",key_to_check_stripped)){
+                params[[key_to_check]] = "[:]"
+              } else{
+                rlog::log_info(paste("Key:",key_to_check,"is already in params"))
+              }
+            }
+          }
+        }
+      } else{
+        another_split = strsplit(line_parsed_key_split,"\\=")[[1]]
+        print(another_split)
+        idx_of_interest = 1
+        idxs_of_interest = c(idx_of_interest)
+        if(sum(another_split=="") > 0 ){
+          idxs_of_interest = (1:length(another_split))[another_split==""]
+          idx_of_interest = idxs_of_interest[length(idxs_of_interest)]
+        }
+        if(idxs_of_interest[1]-1 > 0){
+          new_key =  paste(another_split[1:(idxs_of_interest[1]-1)],sep=".",collapse = "")
+        } else{
+          new_key =  paste(another_split[1],sep=".",collapse = "")
+        }
+        params[[paste("params.",new_key,sep="")]] = trimws(another_split[idx_of_interest + 1])
+        # initialize maps if necessary
+        subkeys = stringr::str_extract_all( new_key,"(?<=\\[).*(?=\\])")[[1]]
+        majorkeys = gsub("\\["," ",new_key)[[1]]
+        majorkeys = strsplit(majorkeys,"\\s+")[[1]]
+        majorkeys_bool = apply(t(majorkeys),2,function(x) !grepl("\\]",x))
+        majorkeys = majorkeys[majorkeys_bool]
+        majorkeys = majorkeys[!is.na(majorkeys)]
+        subkeys = subkeys[!is.na(subkeys)]
+        if(length(subkeys)>0){
+          key_collection = c()
+          for(sks in 1:length(subkeys)){
+            key_prefix = "params."
+            key_collection = c(key_collection,paste("[",subkeys[sks],"]",sep="",collapse=""))
+            key_to_check = paste(key_prefix,key_collection,sep="",collapse="")
+            key_to_check_stripped = sub("^params.","",key_to_check)
+            if(!key_to_check %in% names(params) & !grepl("^\\[",key_to_check_stripped) & !grepl("^'",key_to_check_stripped)){
+              params[[key_to_check]] = "[:]"
+            } else{
+              rlog::log_info(paste("Key:",key_to_check,"is already in params"))
+            }
+          }
+        }
+        if(length(majorkeys)>0 & length(subkeys) > 0){
+          key_collection = c()
+          for(sks in 1:length(majorkeys)){
+            key_prefix = "params."
+            key_collection = c(key_collection,paste(majorkeys[sks],sep="",collapse=""))
+            key_to_check = paste(key_prefix,key_collection,sep="",collapse="")
+            key_to_check_stripped = sub("^params.","",key_to_check)
+            if(!key_to_check %in% names(params) & !grepl("^\\[",key_to_check_stripped) & !grepl("^'",key_to_check_stripped)){
+              params[[key_to_check]] = "[:]"
+            } else{
+              rlog::log_info(paste("Key:",key_to_check,"is already in params"))
+            }
+          }
+          for(sks in 1:length(majorkeys)){
+            for(skss in 1:length(subkeys)){
+              key_collection = c()
+              key_prefix = "params."
+              key_collection = c(key_collection,paste(majorkeys[sks],sep="",collapse=""))
+              key_collection = c(key_collection,paste("[",subkeys[skss],"]",sep="",collapse=""))
+              key_to_check = paste(key_prefix,paste(key_collection,sep="",collapse=""),sep="",collapse="")
+              key_to_check_stripped = sub("^params.","",key_to_check)
+              if(!key_to_check %in% names(params) & !grepl("^\\[",key_to_check_stripped) & !grepl("^'",key_to_check_stripped)){
+                params[[key_to_check]] = "[:]"
+              } else{
+                rlog::log_info(paste("Key:",key_to_check,"is already in params"))
+              }
+            }
+          }
+        }
+        
+      }
       # params[[paste("params.",line_parsed[1],sep="")]] = gsub("\'","",line_parsed[3])
     }
   }

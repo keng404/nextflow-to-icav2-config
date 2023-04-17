@@ -20,6 +20,10 @@ clean_list <- function(list_to_clean){
             rlog::log_info(paste("Modified original key name:",names(list_to_clean)[i] ,"to",key_name))
             list_cleaned[[key_name]] = list_to_clean[[names(list_to_clean)[i]]]
           }
+      } else if(grepl("docker",key_name) & grepl("params",key_name)){
+        # remove params prefix when docker scope variables are declared
+        key_name_cleaned = gsub("^params.","",key_name)
+        list_cleaned[[key_name_cleaned]] = list_to_clean[[key_name]]
       } else{
         list_cleaned[[key_name]] = list_to_clean[[key_name]]
       }
