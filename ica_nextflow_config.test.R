@@ -63,14 +63,14 @@ additional_lines = c("process {",'\twithName:\'CUSTOM_DUMPSOFTWAREVERSIONS\' {',
 ##############################################
 add_test_config <- function(dir_of_interest){
   test_config = NULL
-  configs = list.files(dir_of_interest,pattern="test*.config",full.names = T,recursive = T)
+  configs = list.files(dir_of_interest,pattern="config",full.names = T,recursive = T)
   if(length(configs) >0){
-    if("test_full.config" %in% configs){
-      test_config = configs[configs == "test_full.config"]
+    if(sum(basename(configs) == "test_full.config") > 0 ){
+      test_config = configs[basename(configs) == "test_full.config"]
       rlog::log_info(paste("Choosing the following test config:",test_config))
       return(test_config)
-    } else if("test.config" %in% configs){
-      test_config = configs[configs == "test.config"]
+    } else if(sum(basename(configs) == "test.config") > 0 ){
+      test_config = configs[basename(configs) == "test.config"]
       rlog::log_info(paste("Choosing the following test config:",test_config))
       return(test_config)
     } else{
@@ -81,6 +81,18 @@ add_test_config <- function(dir_of_interest){
     rlog::log_warn(paste("No test configs found for:",dir_of_interest))
     return(test_config)
   }
+}
+#######################
+add_testing_config <- function(test_config,config_file){
+  robust_input_handling_cmd = c("if(params.input) {","if(params.input == \"\") {","\tparams.input = null","}")
+  test_config_file_path = getRelativePath(to=test_config,from=config_file)
+  reference_statement = paste("// includeConfig",paste("'",test_config_file_path,"'",collapse="",sep=""),collapse=" ")
+  conf_dat = read.delim(config_file,header=F,quote="")
+  all_lines = c(paste(robust_input_handling_cmd,collapse = "\n",sep = "\n"),reference_statement,conf_dat)
+  rlog::log_info(paste("UPDATING",nextflow_config))
+  updated_nextflow_config_file = gsub(".config$",".config.tmp",nextflow_config)
+  write.table(x=all_lines,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)
+  system(paste("mv",updated_nextflow_config_file,nextflow_config))
 }
 ################################################
 if(is_simple_config | is.null(base_config_files)){
@@ -104,7 +116,8 @@ if(is_simple_config | is.null(base_config_files)){
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
-    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
+    #add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
+    add_testing_config(test_config,config_file)
   } else{
     rlog::log_info(paste("No testing config found"))
   }
@@ -152,6 +165,7 @@ if(is_simple_config | is.null(base_config_files)){
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
     add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
+    add_testing_config(test_config,config_file)
   } else{
     rlog::log_info(paste("No testing config found"))
   }
