@@ -27,8 +27,13 @@ clean_list <- function(list_to_clean){
       } else{
         list_cleaned[[key_name]] = list_to_clean[[key_name]]
       }
+    } else if(grepl("docker",key_name) & grepl("params",key_name)){
+      # remove params prefix when docker scope variables are declared
+      key_name_cleaned = gsub("^params.","",key_name)
+      list_cleaned[[key_name_cleaned]] = list_to_clean[[key_name]]
     } else if(!is.na(key_name) & !is.na(list_to_clean[[key_name]]) & sum(list_to_clean[[key_name]] %in% malformed_values) == 0){
       if(key_name != "cache" & key_name != "cpus"){
+
         list_cleaned[[key_name]] = list_to_clean[[key_name]]
       } else{
         key_value = list_to_clean[[key_name]]
