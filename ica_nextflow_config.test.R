@@ -84,15 +84,15 @@ add_test_config <- function(dir_of_interest){
 }
 #######################
 add_testing_config <- function(test_config,config_file){
-  robust_input_handling_cmd = c("if(params.input) {","if(params.input == \"\") {","\tparams.input = null","}")
+  robust_input_handling_cmd = c("if(params.input) {","\tif(params.input == \"\") {","\t\tparams.input = null","\t}","}")
   test_config_file_path = getRelativePath(to=test_config,from=config_file)
   reference_statement = paste("// includeConfig",paste("'",test_config_file_path,"'",collapse="",sep=""),collapse=" ")
-  conf_dat = read.delim(config_file,header=F,quote="")
-  all_lines = c(paste(robust_input_handling_cmd,collapse = "\n",sep = "\n"),reference_statement,conf_dat)
-  rlog::log_info(paste("UPDATING",nextflow_config))
-  updated_nextflow_config_file = gsub(".config$",".config.tmp",nextflow_config)
+  conf_dat = t(read.delim(config_file,header=F,quote=""))
+  all_lines = c(paste(robust_input_handling_cmd,collapse="\n"),reference_statement,conf_dat)
+  rlog::log_info(paste("UPDATING",config_file))
+  updated_nextflow_config_file = gsub(".config$",".config.tmp",config_file)
   write.table(x=all_lines,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)
-  system(paste("mv",updated_nextflow_config_file,nextflow_config))
+  system(paste("cp",updated_nextflow_config_file,config_file))
 }
 ################################################
 if(is_simple_config | is.null(base_config_files)){
@@ -117,7 +117,7 @@ if(is_simple_config | is.null(base_config_files)){
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
     #add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
-    add_testing_config(test_config,config_file)
+    add_testing_config(test_config,paste(dirname(config_file),ica_config,sep="/"))
   } else{
     rlog::log_info(paste("No testing config found"))
   }
@@ -164,8 +164,8 @@ if(is_simple_config | is.null(base_config_files)){
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
-    add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
-    add_testing_config(test_config,config_file)
+    #add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
+    add_testing_config(test_config,paste(dirname(config_file),ica_config,sep="/"))
   } else{
     rlog::log_info(paste("No testing config found"))
   }
