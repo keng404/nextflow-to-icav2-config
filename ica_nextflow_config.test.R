@@ -1,6 +1,7 @@
 options(stringsAsFactors=FALSE)
 library(argparse)
 library(rlog)
+library(XML)
 library(stringr)
 source('ica_configure/reading_utils.R')
 source('ica_configure/writing_utilities.R')
@@ -61,6 +62,115 @@ ica_instance_table$CPUs = as.numeric(ica_instance_table$CPUs)
 ica_instance_table$`Mem (GB)` = as.numeric(ica_instance_table$`Mem (GB)`)
 additional_lines = c("process {",'\twithName:\'CUSTOM_DUMPSOFTWAREVERSIONS\' {',"\terrorStrategy = 'ignore'","\t}","}")
 ##############################################
+parameters_to_list <- function(parameter_xml){
+  parameter_names = names(parameter_xml)
+  parameter_list = list()
+  for(i in 1:length(parameter_names)){
+    tools = parameter_xml[i][["step"]][["tool"]]
+    for(j in 1:length(tools)){
+      param_setting = tools[j]
+      if("parameter" %in% names(param_setting)){
+        rlog::log_info(paste("looking at",param_setting))
+        parameter_name = param_setting[["parameter"]][[".attrs"]][["code"]]
+        parameter_attributes = names(param_setting[["parameter"]])
+        parameter_list[[parameter_name]] = list()
+        type_boolean = apply(t(parameter_attributes),2,function(x) grepl("Type",x))
+        if(sum(type_boolean) > 0){
+          parameter_list[[parameter_name]][["type"]] = parameter_attributes[type_boolean]
+        } else{
+          parameter_list[[parameter_name]][["type"]] = NULL
+        }
+        # rlog::log_info(paste("type_boolean:",parameter_list[[parameter_name]][["type"]]))
+        parameter_list[[parameter_name]][["minValue"]] = param_setting[["parameter"]][[".attrs"]][["minValues"]]
+        parameter_list[[parameter_name]][["maxValue"]] = param_setting[["parameter"]][[".attrs"]][["maxValues"]]
+        ##print(param_setting[["parameter"]])
+        if(is.null(param_setting[["parameter"]][["value"]]) & parameter_name != "input"){
+          parameter_list[[parameter_name]][["value"]] = "STRING"
+        } else if( is.null(param_setting[["parameter"]][["value"]]) & parameter_name == "input"){
+          parameter_list[[parameter_name]][["value"]] = ""
+        } else if(!is.null(param_setting[["parameter"]][["value"]]) & param_setting[["parameter"]][["value"]] != "null"){
+          rlog::log_info(paste("Found default value",param_setting[["parameter"]][["value"]] ))
+          parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][["value"]] 
+        } else if(parameter_attributes[type_boolean] == "optionsType" & "value" %in% names(param_setting[["parameter"]])){
+          if((is.null(param_setting[["parameter"]][["value"]]) || param_setting[["parameter"]][["value"]] == "null" )){
+            option_settings = param_setting[["parameter"]][[parameter_attributes[type_boolean]]][["option"]]
+            # default to GRCh38 if possible
+            found_genome_setting = apply(t(option_settings),2,function(x) grepl("GRCh38",x))
+            rlog::log_info(paste("found_genome_setting:",paste(found_genome_setting,sep=", ",collapse=", ")))
+            if(sum(found_genome_setting) == 0){                                                                                                   
+              parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][[parameter_attributes[type_boolean]]][["option"]][1]
+            } else{
+              parameter_list[[parameter_name]][["value"]] = option_settings[found_genome_setting][1]
+            }
+          } else{
+            parameter_list[[parameter_name]][["value"]] = "STRING"
+          }
+        } else{
+          rlog::log_warn(paste("Could not find default value for ",parameter_name))
+          parameter_list[[parameter_name]][["value"]] = "STRING"
+        }
+      }
+    }
+  }
+  return(parameter_list)
+}
+
+add_parameters_to_xml <- function(keys_to_add,xml_file,option_list){
+  doc = xmlTreeParse(xml_file,useInternalNodes = TRUE)
+  root = xmlRoot(doc)
+  ###### Grab all parameters from XML under each tool and output to list ----
+  tools = root[["steps"]][[1]][["tool"]]
+  #######
+  if(length(keys_to_add)>0){
+    for(lv in 1:length(keys_to_add)){
+      key_to_add_alias = keys_to_add[lv]
+      key_to_add_alias = gsub("^params.","",keys_to_add[lv])
+      rlog::log_info(paste("Adding ",key_to_add_alias,"to",xml_file))
+      nested_parameter_node = XML::newXMLNode("parameter",parent=tools)
+      xmlAttrs(nested_parameter_node) = c(code = key_to_add_alias ,minValues = "0",maxValues="1",classification="USER")
+      newXMLNode("label",key_to_add_alias,parent=nested_parameter_node)
+      newXMLNode("description",paste("Configure",keys_to_add[lv]),parent=nested_parameter_node)
+      ##############
+      if(!is.na(strtoi(option_list[[keys_to_add[lv]]]))){
+        parameter_type = 'integerType'
+      } else if(option_list[[keys_to_add[lv]]] %in% c('true','false')){
+        parameter_type = 'booleanType'
+      } else{
+        parameter_type = 'stringType'
+      }
+      ###############
+      options_node = XML::newXMLNode(paste(parameter_type),parent=nested_parameter_node)
+      newXMLNode("value",option_list[[keys_to_add[lv]]],parent=nested_parameter_node)
+    }
+  }
+  outputPath = gsub(".xml$",".updated.xml",xml_file)
+  #rlog::log_info(paste("Updating parameters XML here:",outputPath))
+  #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+  prefix.xml <- "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+  saveXML(doc , file=outputPath,encoding="utf-8")
+  system(paste("mv",outputPath,xml_file))
+  rlog::log_info(paste("Updating parameters XML to:",xml_file))
+}
+test_config_update_xml <- function(config_file,option_list,parameters_to_check = NULL){
+  if(is.null(parameters_to_check)){
+    parameters_to_check = names(option_list)
+  }
+  parameter_xml_file = paste(dirname(config_file),paste(basename(dirname(config_file)),".pipeline.xml",sep=""),sep="/")
+  rlog::log_info(paste("UPDATING parameters XML file:",parameter_xml_file))
+  doc = xmlToList(parameter_xml_file)
+  tool_names = doc[["steps"]]
+  final_tool_params_list = parameters_to_list(tool_names)
+  existing_parameters = names(final_tool_params_list)
+  existing_parameters = apply(t(existing_parameters),2,function(x) paste("params.",x,sep=""))
+  parameters_to_check_bool = !parameters_to_check %in% existing_parameters
+  if(sum(parameters_to_check_bool) > 0){
+    parameters_to_check = parameters_to_check[parameters_to_check_bool]
+    add_parameters_to_xml(parameters_to_check,parameter_xml_file,option_list)
+  } else{
+    rlog::log_warn(paste("No updates needed for:",parameter_xml_file))
+  }
+}
+#################################################
 add_test_config <- function(dir_of_interest){
   test_config = NULL
   configs = list.files(dir_of_interest,pattern="config",full.names = T,recursive = T)
@@ -83,7 +193,7 @@ add_test_config <- function(dir_of_interest){
   }
 }
 #######################
-add_testing_config <- function(test_config,config_file){
+add_testing_config <- function(test_config_file_path,config_file){
   reference_statement = paste("   includeConfig",paste("'",test_config_file_path,"'",collapse="",sep=""),collapse=" ")
   #robust_input_handling_cmd = c("if(params.ica_smoke_test) {","\tif(params.input == \"\") {","\t\tparams.input = null","\t}","}")
   robust_input_handling_cmd = c("if(params.ica_smoke_test) {","    params.input = null",reference_statement,"}")
@@ -117,8 +227,10 @@ if(is_simple_config | is.null(base_config_files)){
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
+    test_config_params = get_params_from_config(conf_file=test_config)
     #add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
-    add_testing_config(test_config,paste(dirname(config_file),ica_config,sep="/"))
+    add_testing_config(test_config_file_path,paste(dirname(config_file),ica_config,sep="/"))
+    test_config_update_xml(config_file,test_config_params)
   } else{
     rlog::log_info(paste("No testing config found"))
   }
@@ -165,8 +277,10 @@ if(is_simple_config | is.null(base_config_files)){
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
+    test_config_params = get_params_from_config(conf_file=test_config)
     #add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=test_config_file_path,for_testing=TRUE)
-    add_testing_config(test_config,paste(dirname(config_file),ica_config,sep="/"))
+    add_testing_config(test_config_file_path,paste(dirname(config_file),ica_config,sep="/"))
+    test_config_update_xml(config_file,test_config_params)
   } else{
     rlog::log_info(paste("No testing config found"))
   }
