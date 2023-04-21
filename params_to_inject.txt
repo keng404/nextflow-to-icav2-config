@@ -8,3 +8,4 @@ params.enable_conda = false
 params.email_on_fail = null
 params.email = null
 process = [:]
+params.ica_smoke_test = false

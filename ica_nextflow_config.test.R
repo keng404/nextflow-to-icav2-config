@@ -84,11 +84,12 @@ add_test_config <- function(dir_of_interest){
 }
 #######################
 add_testing_config <- function(test_config,config_file){
-  robust_input_handling_cmd = c("if(params.input) {","\tif(params.input == \"\") {","\t\tparams.input = null","\t}","}")
+  reference_statement = paste("   includeConfig",paste("'",test_config_file_path,"'",collapse="",sep=""),collapse=" ")
+  #robust_input_handling_cmd = c("if(params.ica_smoke_test) {","\tif(params.input == \"\") {","\t\tparams.input = null","\t}","}")
+  robust_input_handling_cmd = c("if(params.ica_smoke_test) {","    params.input = null",reference_statement,"}")
   test_config_file_path = getRelativePath(to=test_config,from=config_file)
-  reference_statement = paste("// includeConfig",paste("'",test_config_file_path,"'",collapse="",sep=""),collapse=" ")
   conf_dat = t(read.delim(config_file,header=F,quote=""))
-  all_lines = c(paste(robust_input_handling_cmd,collapse="\n"),reference_statement,conf_dat)
+  all_lines = c(paste(robust_input_handling_cmd,collapse="\n"),conf_dat)
   rlog::log_info(paste("UPDATING",config_file))
   updated_nextflow_config_file = gsub(".config$",".config.tmp",config_file)
   write.table(x=all_lines,file=updated_nextflow_config_file,sep="\n",quote=F,row.names=F,col.names=F)

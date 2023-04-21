@@ -58,9 +58,10 @@ Change order params are added so that the params injected comes before params st
 	- add tag to pipeline metadata?
 		- versionComment in request body for [this ICA API endpoint](https://ica.illumina.com/ica/api/swagger/index.html#/Project%20Pipeline/createNextflowPipeline)
 - [ ] 10) Add some comments about docker scope as implemented in nextflow ([DockerBuilder.groovy](https://github.com/nextflow-io/nextflow/blob/master/modules/nextflow/src/main/groovy/nextflow/container/DockerBuilder.groovy))
-- [ ] 11) a html that lists what nf-core pipelines have been lifted over
+- [ ] 11) a html table that lists what nf-core pipelines have been lifted over
 - [ ] 12) Troubleshooting guide --- what if you run into error
 	- error message is likely related to the following:
 		- 1) Check XML file to see if it's malformed or have the parameter/dataInput needed for your pipeline
 		- 2) Check config (```nextflow.ica.config``` or ```conf/base.ica.config``` ) files for syntax errors
 		- 3) Look at module, workflow,subworkflow, or main.nf files for any additional syntax errors
+- [ ] 13) A guide with the scripts in this repository on how to set up pipeline runs on ICA via the CLI

@@ -24,6 +24,8 @@ parser$add_argument("-b","--base-ica-url","--base_ica_url",
                     default="ica.illumina.com", help = "ICA base URL")
 parser$add_argument("-o","--output-file","--output_file",
                     default=NULL, help = "output file with CLI commands")
+parser$add_argument("-t","--turn-off-testing","--turn_off_testing",action="store_true",
+                    default=FALSE, help = "turn off testing condition (i.e. params.ica_smoke_test)")
 args <- parser$parse_args()
 ########
 nfcore_bundle_file = args$nfcore_bundle_file
@@ -35,7 +37,7 @@ api_key_file = args$api_key_file
 server_url = args$base_ica_url
 output_launch_script = args$output_file
 pipeline_conversion_dir = args$pipeline_conversion_dir
-
+turn_off_testing = args$turn_off_testing
 ####
 current_timestamp = format(Sys.time(), "%d_%m_%y_%H_%M_%S")
 current_datestamp = format(Sys.time(), "%Y%m%d")
@@ -63,7 +65,7 @@ if(length(creation_jsons)==0){
     # auto-generate CLI stub output file
     cli_stub_file =  paste(dirname(pipeline_creation_json),paste(pipeline_name,".nf-core.smoke_test.",current_datestamp,".txt",sep=""),sep="/")
   
-    command_line = c("Rscript $HOME/nextflow-to-icav2-config/smoketest.nf-core.R","--nfcore-bundle-file",nfcore_bundle_file,"--demo-data-file",demo_data_file,"--parameters-xml",xml_file_path,"--pipeline-creation-json",pipeline_creation_json,"--api-key-file",api_key_file,"--output-file",cli_stub_file)                         
+    command_line = c("Rscript smoketest.nf-core.R","--nfcore-bundle-file",nfcore_bundle_file,"--demo-data-file",demo_data_file,"--parameters-xml",xml_file_path,"--pipeline-creation-json",pipeline_creation_json,"--api-key-file",api_key_file,"--output-file",cli_stub_file)                         
     
     for(k in 1:length(names(ica_auth_list))){
       key = names(ica_auth_list)[k]
@@ -72,10 +74,13 @@ if(length(creation_jsons)==0){
     if(!"project_id" %in% names(ica_auth_list)){
       command_line = c(command_line,"--ica-project-name",ica_project_name)
     }
+    if(turn_off_testing){
+      command_line = c(command_line,"--turn-off-testing")
+    }
     rlog::log_info(paste("RUNNING",paste(command_line,collapse = " ",sep = " ")))
     system(paste(command_line,collapse = " ",sep = " "))
     cli_commands = c(cli_commands,paste("bash",cli_stub_file))
-    cli_commands = c(cli_commands,"sleep 30")
+    cli_commands = c(cli_commands,"sleep 5")
   }
 }
 

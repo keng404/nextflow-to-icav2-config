@@ -1,5 +1,6 @@
 
 library(rlog)
+source('ica_configure/reading_utils.R')
 options(stringsAsFactors=FALSE)
 suppressPackageStartupMessages(library("argparse"))
 # create parser object
@@ -24,12 +25,14 @@ parser$add_argument("-i","--ica-project-id","--ica_project_id",
                     default=NULL, help = "ICA project id")
 parser$add_argument("-b","--base-ica-url","--base_ica_url",
                     default="ica.illumina.com", help = "ICA base URL")
+parser$add_argument("-t","--turn-off-testing","--turn_off_testing",action="store_true",
+                    default=FALSE, help = "turn off testing condition (i.e. params.ica_smoke_test")
 parser$add_argument("-o","--output-file","--output_file",
                     default="launch.nfcore.smoke_test.txt", help = "output file with CLI commands")
 args <- parser$parse_args()
 pipeline_creation_json = args$pipeline_creation_json
 pipeline_creation_jsons = c(pipeline_creation_json)
-
+turn_off_testing = args$turn_off_testing
 nfcore_bundle_file = args$nfcore_bundle_file
 nfcore_bundle_info = read.csv(nfcore_bundle_file)
 nfcore_base_dir = args$nfcore_base_dir
@@ -51,6 +54,37 @@ if(length(pipeline_creation_jsons) == 0){
 xml_file = NULL
 if(!is.null(args$parameters_xml)){
   xml_file = args$parameters_xml
+}
+
+### 
+smoke_test_override = list()
+if(!turn_off_testing){
+  config_files = list.files(dirname(xml_file),pattern=".config$",full.names=T)
+  config_of_interest = NULL
+  if(sum(basename(config_files) == "nextflow.ica.config") >0){
+    config_of_interest = config_files[basename(config_files) == "nextflow.ica.config"]
+  } else if(sum(basename(config_files) == "nextflow.config") >0){
+    config_of_interest = config_files[basename(config_files) == "nextflow.config"]
+  } 
+  if(!is.null(config_of_interest)){
+    config_of_interest_dat = t(read.delim(config_of_interest,header=F,quote=""))
+    lines_of_interest_bool = apply(t(config_of_interest_dat),2,function(x) grepl("includeConfig",x) & grepl("test",x))
+    if(sum(lines_of_interest_bool)>0){
+      lines_of_interest = config_of_interest_dat[lines_of_interest_bool]
+      for(i in 1:length(lines_of_interest)){
+        tokens_of_interest = strsplit(lines_of_interest,"\\s+")[[1]]
+        tokens_of_interest_bool = apply(t(tokens_of_interest),2,function(x) grepl("'",x))
+        if(sum(tokens_of_interest_bool) > 0){
+          relative_path_of_interest = tokens_of_interest[tokens_of_interest_bool][1]
+          relative_path_of_interest = gsub("'","",relative_path_of_interest)
+          conf_path = paste(dirname(xml_file),relative_path_of_interest,sep="/")
+          rlog::log_info(paste("Reading in smoke test config file:",conf_path))
+          smoke_test_override = get_params_from_config(conf_file = conf_path)
+          #print(smoke_test_override)
+        }
+      }
+    }
+  }
 }
 ####
 if(is.null(ica_project_id) && is.null(ica_project_name)){
@@ -695,13 +729,17 @@ fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_t
   # how to get initial files staged within project dir?
   json_template1 = json_template
   if(is.null(input_spreadsheet)){
-    json_template1[["parameters"]][["input"]][["value"]] = "\"*{fastq,fq}.gz\""
+    if(!turn_off_testing){
+      json_template1[["parameters"]][["input"]][["value"]] = "\"*{fastq,fq}.gz\""
+    }
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
     
   } else{
     spreadsheet_ica_path = getICAFilePath(file_id = input_spreadsheet,ica_auth_list = ica_auth_list)
-    json_template1[["parameters"]][["input"]][["value"]] =  basename(spreadsheet_ica_path)
+    if(!turn_off_testing){
+      json_template1[["parameters"]][["input"]][["value"]] =  basename(spreadsheet_ica_path)
+    }
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,input_spreadsheet,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
   }
@@ -710,11 +748,35 @@ fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_t
 
 set_dummy_parameter_setting <- function(pipeline_settings){
   params_to_check = names(pipeline_settings[["parameters"]])
+  params_to_leave_out = c()
   for(i in 1:length(params_to_check)){
     default_value = pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]]
     param_type = pipeline_settings[["parameters"]][[params_to_check[i]]][["type"]]
-    if(params_to_check[i] == "input" & (default_value == "null" | default_value == ""| grepl("\\*",default_value))){
-      default_value = "\"*{fastq,fg}.gz\""
+    if(params_to_check[i] == "input"){
+      rlog::log_info(paste("Found ica_smoke_test"))
+      rlog::log_info(paste("turn_off_testing:",turn_off_testing))
+      if(turn_off_testing){
+        if(is.null(default_value)){
+          default_value = "\"*{fastq,fg}.gz\""
+        } else if((default_value == "null" | default_value == ""| grepl("\\*",default_value))){
+              default_value = "\"*{fastq,fg}.gz\""
+        }
+      } else{
+        default_value = ""
+      }
+      rlog::log_info(paste("default_value:",default_value))
+      pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]] = default_value
+    } else if(params_to_check[i] == "ica_smoke_test"){
+      #rlog::log_info(paste("Found ica_smoke_test"))
+      #rlog::log_info(paste("turn_off_testing:",turn_off_testing))
+      if(!turn_off_testing){
+        default_value = "true"
+        params_to_leave_out = c(params_to_leave_out,"input")
+      } else{
+        default_value = "false"
+      }
+      #rlog::log_info(paste("default_value:",default_value))
+      pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]] = default_value
     } else if(is.null(default_value)){
       if(param_type == "stringType"){
         default_value = "test"
@@ -729,7 +791,7 @@ set_dummy_parameter_setting <- function(pipeline_settings){
         rlog::log_warn(paste("Not sure how to set options_type type: Check XML for",params_to_check[i]))
       }
       pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]] = default_value
-    } else if(default_value == "" | default_value == "null"){
+    } else if(default_value == "null"){
       if(param_type == "stringType"){
         default_value = "test"
         if(grepl("email",params_to_check[i])){
@@ -748,7 +810,8 @@ set_dummy_parameter_setting <- function(pipeline_settings){
       pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]] = default_value
     }
   }
-  return(pipeline_settings)
+  
+  return(pipeline_settings) 
 }
 ##########
 check_usage_doc <- function(usage_documentation){
@@ -931,6 +994,24 @@ for( i in 1:length(pipeline_creation_jsons)){
       }
     }
   }
+####################################  
+# smoke test override  
+  params_keep = c("params.outdir")
+  if(!turn_off_testing){
+    if(length(names(smoke_test_override)) > 0 ){
+      params_to_update_for_smoke_test = names(revised_template_json_list[["parameters"]])
+      for(idx in 1:length(params_to_update_for_smoke_test)){
+        param = params_to_update_for_smoke_test[idx]
+        param_full = paste("params.",param,sep="")
+        rlog::log_info(paste("LOOKING_AT_POTENTIAL_PARAMETER_UPDATE:",param_full))
+        if(param_full %in% names(smoke_test_override) & !param_full %in% params_keep){
+          rlog::log_info(paste("SMOKE_TEST_OVERRIDE parameter:",param,"value:",smoke_test_override[[param_full]]))
+          revised_template_json_list[["parameters"]][[param]][["value"]] = smoke_test_override[[param_full]]
+        }
+      }
+    }
+  }
+######################################
   template_JSON = jsonlite::toJSON(revised_template_json_list,pretty=TRUE)
   rlog::log_info(paste("Writing template to",cli_json))
   write(template_JSON,file=cli_json)

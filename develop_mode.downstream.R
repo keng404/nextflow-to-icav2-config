@@ -69,7 +69,7 @@ create_error_stub <- function(error_stub){
 }
 create_complete_stub <- function(){
   #new_lines = t(read.delim(complete_stub,header=F,quote="",sep="\n"))
-  return(c("workflow.onComplete{ ","println(\"Pipeline Completed Successfully\")","System.exit(0)","}"))
+  return(c("workflow.onComplete{ ","if(workflow.success){", "\tprintln(\"Pipeline Completed Successfully\")","\tSystem.exit(0)","}","else{","\tprintln(\"Pipeline Completed with Errors\")","\tSystem.exit(1)","}","}"))
 }
 add_error_stub <- function(nf_file,stub_statements){
   temp_file = paste(nf_file,".tmp",sep="")

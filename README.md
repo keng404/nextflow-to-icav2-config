@@ -29,6 +29,7 @@ What these scripts do:
 2) adds ```workflow.onError``` (main.nf, workflows,subworkflows, modules) to aid troubleshooting
 3) modifies the processes that reference scripts and tools in the ```bin/``` directory of a pipeline's ```projectDir``` so that when ICA orchestrates your nextflow pipeline it can find and properly execute your pipeline process.
 4) Generates parameter XML file based on ```nextflow_schema.json, nextflow.config, conf/```
+`- Take a look at [this](https://github.com/keng404/nextflow-to-icav2-config/blob/main/XML.md) to understand a bit more of what's done with the XML as you may want to make further edits to this file for better usability.
 5) Additional edits to ensure your pipeline runs more smoothly on ICA
 
 # ICA Concepts to better understand ICA liftover of nextflow pipelines
@@ -43,7 +44,7 @@ These scripts have been made to be compatible with [nf-core](https://github.com/
 
 # Using these scripts
 
-The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-icav2-config:0.0.1```
+The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-icav2-config:0.0.3```
 
 This has:
   - nf-core installed
@@ -51,7 +52,7 @@ This has:
   
 You'll likely need to run the image with a docker command like this for you to be able to run git commands within the container:
 ```bash
-docker run -itv `pwd`:`pwd` -e HOME=`pwd` -u $(id -u):$(id -g) keng404/nextflow-to-icav2-config:0.0.1 /bin/bash
+docker run -itv `pwd`:`pwd` -e HOME=`pwd` -u $(id -u):$(id -g) keng404/nextflow-to-icav2-config:0.0.3 /bin/bash
 ```
 
 where ````pwd```` is your ```$HOME``` directory
@@ -150,15 +151,25 @@ Rscript nf-core.create_ica_pipeline.R --nextflow-script {NF_SCRIPT} --workflow-l
 ```
 
 ### developer mode --- if you plan to develop or modify a pipeline in ICA
-Add the flag ```--developer-mode``` to the command line above if you have custom groovy libraries or modules files your workflow references. What this script will do when this flag is specified is to upload these files and directories to ICA and to update the parameter XML file to allow you to specify directories under the parameters project_dir and files under input_files. This will ensure that these files and directories will be placed in the ```$workflow.launchDir``` when the pipeline is invoked.
+Add the flag ```--developer-mode``` to the command line above if you have custom groovy libraries or modules files your workflow references. What this script will do when this flag is specified is to upload these files and directories to ICA and to update the parameter XML file to allow you to specify directories under the parameters ```project_dir``` and files under ```input_files```. This will ensure that these files and directories will be placed in the ```$workflow.launchDir``` when the pipeline is invoked.
 
 # How to run a pipeline in  ICA via CLI
 As a convenience, one can also get a templated CLI command to help users run a pipeline (i.e. submit a pipeline request) in ICA via the following:
 ```bash
-Rscript launch_pipeline_mock_pipeline_cli.R --pipeline-name {PIPELINE_NAME} --workflow-language {xml or nextflow} --parameters-xml {PATH_TO_PARAMETERS_XML}
+Rscript create_cli_templates_from_xml.R --pipeline-name {PIPELINE_NAME} --workflow-language {xml or nextflow} --parameters-xml {PATH_TO_PARAMETERS_XML}
 ```
+There will be a corrsponding JSON file (i.e. a file with a file extension ```*ICAv2_CLI_template.json```)  that saves these values that one could modify and configure to build out templates or launch a specific pipeline run the desire.
+You can specify the name of this JSON file with the parameter ```--output-json```
 
-By default, this script will automatically try to upload all files found in the same directory as your ```{NF_SCRIPT}```, excluding any nextflow config files (i.e. *config)
+Once you modify this file you can use ```--template-json``` and specify this file to create the CLI you can use to launch your pipeline. 
+
+# creating your	own tests/pipeline runs	via the	CLI
+Where possible these scripts search for config files that refer to a test (i.e. test.config,test_full.config,test*config) and creates a boolean parameter ```params.ica_smoke_test```
+that can be toggled on/off as a sanity check that the pipeline works as intended. By default, this parameter is set to ```false```.
+
+When set to ```true```, these test config files are loaded in your main ```nextflow.config```
+
+
 
 # additional todos
-[todos](https://github.com/keng404/nextflow-to-icav2-config/blob/main/todos.2023_02_23.md)
+[todos](https://github.com/keng404/nextflow-to-icav2-config/blob/main/todos.md)

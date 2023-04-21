@@ -52,9 +52,9 @@ nextflow_test_result = system(nextflow_cmd,intern = TRUE)
 #####################
 nextflow_command_error <- function(cmd_out){
   error_in_output = FALSE
-  error_in_line = apply(t(cmd_out),2,function(x) grepl("error|groovy|fail",x,ignore.case = TRUE))
+  error_in_line = apply(t(cmd_out),2,function(x) grepl("compile|error|groovy|fail",x,ignore.case = TRUE))
   please_in_line = apply(t(cmd_out),2,function(x) grepl("please",x,ignore.case = TRUE))
-  if(sum(error_in_line) > 0 & sum(please_in_line) == 0){
+  if(sum(error_in_line & !please_in_line) > 0){
     error_in_output = TRUE
   }
   return(error_in_output)

@@ -89,6 +89,59 @@ if(workflow_language == "cwl"){
 ica_pipeline_launch_cmd = c("icav2 projectpipelines",workflow_language,"start",args$pipeline_name)
 ica_pipeline_launch_cmd_global_flags = c("-k",paste("'",api_key,"'",sep=""))
 #######################
+smoke_test_in_config <- function(config_file){
+  conf_data = t(read.delim(config_file,header=F,quote=""))
+  smoke_test_in_config_bool = FALSE
+  line_bool = apply(t(conf_data),2,function(x) grepl("includeConfig",x) & grepl("test",x))
+  if(sum(line_bool) >0){
+    smoke_test_in_config_bool = TRUE
+  }
+  return(smoke_test_in_config_bool)
+}
+
+ica_smoke_test_in_parameters_list <- function(parameter_xml){
+  parameter_names = names(parameter_xml)
+  found_ica_smoke_test = FALSE
+  parameter_list = list()
+  for(i in 1:length(parameter_names)){
+    tools = parameter_xml[i][["step"]][["tool"]]
+    for(j in 1:length(tools)){
+      param_setting = tools[j]
+      if("parameter" %in% names(param_setting)){
+        rlog::log_info(paste("looking at",param_setting))
+        parameter_name = param_setting[["parameter"]][[".attrs"]][["code"]]
+        if(parameter_name == "ica_smoke_test"){
+          found_ica_smoke_test  = TRUE
+        }
+      }
+    }
+  }
+  return(found_ica_smoke_test)
+}
+
+
+add_ica_smoke_test_to_parameters_list <- function(xml_file){
+  doc = xmlTreeParse(parameter_xml_file,useInternalNodes = TRUE)
+  root = xmlRoot(doc)
+  ###### Grab all parameters from XML under each tool and output to list ----
+  tools = root[["steps"]][[1]][["tool"]]
+  #######
+  nested_parameter_node = XML::newXMLNode("parameter",parent=tools)
+  xmlAttrs(nested_parameter_node) = c(code = "ica_smoke_test",minValues = "0",maxValues="1",classification="USER")
+  newXMLNode("label","ica_smoke_test",parent=nested_parameter_node)
+  newXMLNode("description","Boolean to trigger smoke test:",parent=nested_parameter_node)
+  # default params.ica_smoke_test false, can be triggered to true later
+  XML::newXMLNode(paste("booleanType"),parent=nested_parameter_node)
+  newXMLNode("value","false",parent=nested_parameter_node)
+  outputPath = gsub(".xml$",".updated.xml",xml_file)
+  #rlog::log_info(paste("Updating parameters XML here:",outputPath))
+  #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+  prefix.xml <- "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+  saveXML(doc , file=outputPath,encoding="utf-8")
+  system(paste("mv",outputPath,xml_file))
+  rlog::log_info(paste("Updating parameters XML to:",xml_file))
+}
+##########################
 additional_files = args$project_directory
 files_to_add = list()
 if(!is.null(additional_files)){
@@ -385,6 +438,21 @@ if(args$developer_mode){
     rlog::log_info(paste("Updating parameters XML to:",parameter_xml_file))
     xml_file = parameter_xml_file
   }
+  ## add smoke test to ICA XML file
+  smoke_test_in_config_bool = smoke_test_in_config(nextflow_config)
+  if(smoke_test_in_config_bool){
+    xml_list = XML::xmlToList(parameter_xml_file)
+    tool_names = xml_list[["steps"]]
+    if(!ica_smoke_test_in_parameters_list(tool_names)){
+      ###### Grab all parameters from XML under each tool and output to list ----
+      add_ica_smoke_test_to_parameters_list(xml_file = parameter_xml_file)
+    } else{
+      rlog::log_info(paste("Already found ica_smoke_test in the xml:",parameter_xml_file))
+    }
+  } else{
+    rlog::log_info(paste("No smoke test reference found in:",smoke_test_in_config_bool))
+  }
+  ################################
   pipeline_creation_request[["parametersXmlFile"]] = xml_file
   #####################################################
   files_to_stage = file_list

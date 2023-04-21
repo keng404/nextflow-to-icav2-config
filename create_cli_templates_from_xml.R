@@ -45,7 +45,12 @@ parameters_to_list <- function(parameter_xml){
        # rlog::log_info(paste("type_boolean:",parameter_list[[parameter_name]][["type"]]))
         parameter_list[[parameter_name]][["minValue"]] = param_setting[["parameter"]][[".attrs"]][["minValues"]]
         parameter_list[[parameter_name]][["maxValue"]] = param_setting[["parameter"]][[".attrs"]][["maxValues"]]
-        if(!is.null(param_setting[["parameter"]][["value"]]) & param_setting[["parameter"]][["value"]] != "null"){
+        ##print(param_setting[["parameter"]])
+        if(is.null(param_setting[["parameter"]][["value"]]) & parameter_name != "input"){
+          parameter_list[[parameter_name]][["value"]] = "STRING"
+        } else if( is.null(param_setting[["parameter"]][["value"]]) & parameter_name == "input"){
+          parameter_list[[parameter_name]][["value"]] = ""
+        } else if(!is.null(param_setting[["parameter"]][["value"]]) & param_setting[["parameter"]][["value"]] != "null"){
           rlog::log_info(paste("Found default value",param_setting[["parameter"]][["value"]] ))
           parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][["value"]] 
         } else if(parameter_attributes[type_boolean] == "optionsType" & "value" %in% names(param_setting[["parameter"]])){
@@ -156,9 +161,16 @@ cli_preview <- function(json_template,workflow_language){
       if(grepl("\\.|\\-",key_value) & !grepl("fil",key_value) & !grepl("fol",key_value) & !grepl("'",key_value)){
         key_value = paste("'",key_value,"'",sep="")
       }
-      string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
+      string_to_add = c()
+      if(!is.null(key_value) & key_value != ""){
+        string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
+      } else{
+        rlog::log_warn(paste("Not adding:",key_name,"to the CLI stub"))
+      }
       #rlog::log_info(paste("ADDING:",string_to_add))
-      cli_interstitial = c(cli_interstitial,string_to_add)
+      if(length(string_to_add) > 0){
+        cli_interstitial = c(cli_interstitial,string_to_add)
+      }
     }
   }
   final_string_components = c(boilerplate_cli_prefix,cli_interstitial,boilerplate_cli_suffix)
