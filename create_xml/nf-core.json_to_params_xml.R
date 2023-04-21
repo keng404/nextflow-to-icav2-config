@@ -299,11 +299,7 @@ if(length(step_configurations)>0){
     for(j in 1:length(parameter_names)){
       parameter_metadata = step_configurations[[names(step_configurations[i])]][[parameter_names[j]]]
       nested_parameter_node = newXMLNode("parameter",parent=tool_description_node)
-      if(names(step_configurations[[names(step_configurations)[i]]])[j] != "input"){
-        xmlAttrs(nested_parameter_node) = c(code = names(step_configurations[[names(step_configurations)[i]]])[j],minValues = "1",maxValues="1",classification="USER")
-      } else{
-        xmlAttrs(nested_parameter_node) = c(code = names(step_configurations[[names(step_configurations)[i]]])[j],minValues = "0",maxValues="1",classification="USER")
-      }
+      xmlAttrs(nested_parameter_node) = c(code = names(step_configurations[[names(step_configurations)[i]]])[j],minValues = "1",maxValues="1",classification="USER")
       newXMLNode("label",parameter_names[j],parent=nested_parameter_node)
       parameter_metadata[["description"]] = gsub("\n$","",parameter_metadata[["description"]])
       newXMLNode("description",parameter_metadata[["description"]],parent=nested_parameter_node)
