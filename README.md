@@ -15,7 +15,9 @@ Some additional repos that can help with your ICA experience can be found below:
 ## local testing your nextflow pipeline after using these scripts
 This [naive wrapper](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/test_nextflow_script.R) will allow you to test your main.nf script. If you have a nextflow pipeline that is more nf-core like (i.e. where you may have several subworkflow and module files) this [script](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/nextflow_extended_local_testing.R) may be more appropriate. Any and all comments are welcome.
 
-Some examples of nextflow pipelines that have been lifted over with this repo can be found [here](https://github.com/keng404/ica_nextflow_demos)
+Some examples of nextflow pipelines that have been lifted over with this repo can be found [here](https://github.com/keng404/ica_nextflow_demos_v2)
+
+Some additional examples of ICA-ported nextflow pipelines are [here](https://github.com/keng404/ica_nextflow_demos) 
 
 - Ken (keng@illumina.com)
 
