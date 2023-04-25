@@ -130,10 +130,14 @@ add_parameters_to_xml <- function(keys_to_add,xml_file,option_list){
       xmlAttrs(nested_parameter_node) = c(code = key_to_add_alias ,minValues = "0",maxValues="1",classification="USER")
       newXMLNode("label",key_to_add_alias,parent=nested_parameter_node)
       newXMLNode("description",paste("Configure",keys_to_add[lv]),parent=nested_parameter_node)
+      # remove double-quotes
+      option_list[[keys_to_add[lv]]] = gsub("\"","",option_list[[keys_to_add[lv]]])
       ##############
       if(!is.na(strtoi(option_list[[keys_to_add[lv]]]))){
         parameter_type = 'integerType'
-      } else if(option_list[[keys_to_add[lv]]] %in% c('true','false')){
+      } else if(!is.na(as.numeric(option_list[[keys_to_add[lv]]]))){
+        parameter_type = 'floatType'
+      } else if(option_list[[keys_to_add[lv]]] %in% c('true','false',TRUE,FALSE)){
         parameter_type = 'booleanType'
       } else{
         parameter_type = 'stringType'

@@ -730,7 +730,7 @@ fill_json_template_with_demo_data <- function(pipeline_name,demo_dataset, json_t
   json_template1 = json_template
   if(is.null(input_spreadsheet)){
     if(!turn_off_testing){
-      json_template1[["parameters"]][["input"]][["value"]] = "\"*{fastq,fq}.gz\""
+      json_template1[["parameters"]][["input"]][["value"]] = '*{fastq,fq}.gz'
     }
     json_template1[["input"]][["input_files"]][["value"]] =  c(demo_dataset,files_of_interest)
     json_template1[["input"]][["project_dir"]][["value"]] =  folders_of_interest
@@ -752,14 +752,16 @@ set_dummy_parameter_setting <- function(pipeline_settings){
   for(i in 1:length(params_to_check)){
     default_value = pipeline_settings[["parameters"]][[params_to_check[i]]][["value"]]
     param_type = pipeline_settings[["parameters"]][[params_to_check[i]]][["type"]]
+    # strip out double quotes
+    default_value = gsub("\"","",default_value)
     if(params_to_check[i] == "input"){
       rlog::log_info(paste("Found ica_smoke_test"))
       rlog::log_info(paste("turn_off_testing:",turn_off_testing))
       if(turn_off_testing){
         if(is.null(default_value)){
-          default_value = "\"*{fastq,fg}.gz\""
+          default_value = '*{fastq,fg}.gz'
         } else if((default_value == "null" | default_value == ""| grepl("\\*",default_value))){
-              default_value = "\"*{fastq,fg}.gz\""
+              default_value = '*{fastq,fg}.gz'
         }
       } else{
         default_value = ""

@@ -324,7 +324,11 @@ if(length(step_configurations)>0){
         }
       } else{
         if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
+          if(is.na(as.numeric(parameter_metadata[["default"]]))){
           newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
+          } else{
+            newXMLNode(paste("float","Type",sep=""),parent=nested_parameter_node)
+          }
         } else{
           newXMLNode(paste(paste(parameter_metadata[["type"]],"Type",sep=""),sep=""),parent=nested_parameter_node)
         }
