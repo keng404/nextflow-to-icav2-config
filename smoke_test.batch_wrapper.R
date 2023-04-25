@@ -63,7 +63,7 @@ if(length(creation_jsons)==0){
     # infer XML file path
     xml_file_path = paste(dirname(pipeline_creation_json),paste(pipeline_name,".pipeline.xml",sep=""),sep="/")
     # auto-generate CLI stub output file
-    cli_stub_file =  paste(dirname(pipeline_creation_json),paste(pipeline_name,".nf-core.smoke_test.",current_datestamp,".txt",sep=""),sep="/")
+    cli_stub_file =  paste(Sys.getenv('HOME'),paste(pipeline_name,".nf-core.smoke_test.",current_datestamp,".txt",sep=""),sep="/")
   
     command_line = c("Rscript smoketest.nf-core.R","--nfcore-bundle-file",nfcore_bundle_file,"--demo-data-file",demo_data_file,"--parameters-xml",xml_file_path,"--pipeline-creation-json",pipeline_creation_json,"--api-key-file",api_key_file,"--output-file",cli_stub_file)                         
     
