@@ -299,7 +299,8 @@ if(length(step_configurations)>0){
     for(j in 1:length(parameter_names)){
       parameter_metadata = step_configurations[[names(step_configurations[i])]][[parameter_names[j]]]
       nested_parameter_node = newXMLNode("parameter",parent=tool_description_node)
-      xmlAttrs(nested_parameter_node) = c(code = names(step_configurations[[names(step_configurations)[i]]])[j],minValues = "1",maxValues="1",classification="USER")
+      parameter_name = names(step_configurations[[names(step_configurations)[i]]])[j]
+      xmlAttrs(nested_parameter_node) = c(code = parameter_name,minValues = "1",maxValues="1",classification="USER")
       newXMLNode("label",parameter_names[j],parent=nested_parameter_node)
       parameter_metadata[["description"]] = gsub("\n$","",parameter_metadata[["description"]])
       newXMLNode("description",parameter_metadata[["description"]],parent=nested_parameter_node)
@@ -334,7 +335,11 @@ if(length(step_configurations)>0){
         }
       }
       if("default" %in% names(parameter_metadata)){
-        dummy_value = ""
+        if(parameter_name != "outdir"){
+          dummy_value = ""
+        } else{
+          dummy_value = "out"
+        }
         if(parameter_metadata[["default"]] != ""){
           if(parameter_metadata[["default"]] == FALSE & parameter_metadata[["default"]] != 0){
             parameter_metadata[["default"]] = "false"

@@ -90,7 +90,17 @@ parameters_to_list <- function(parameter_xml){
           parameter_list[[parameter_name]][["value"]] = ""
         } else if(!is.null(param_setting[["parameter"]][["value"]]) & param_setting[["parameter"]][["value"]] != "null"){
           rlog::log_info(paste("Found default value",param_setting[["parameter"]][["value"]] ))
-          parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][["value"]] 
+          if(grepl("\\/\\/",param_setting[["parameter"]][["value"]])){
+            additional_split = strsplit(param_setting[["parameter"]][["value"]],"\\/\\/")[[1]]
+            additional_split = apply(t(additional_split),2,trimws)
+            if(length(additional_split)>0 & additional_split[1] != ""){
+              parameter_list[[parameter_name]][["value"]] = additional_split[1]
+            } else{
+              parameter_list[[parameter_name]][["value"]] = ""
+            }
+          } else{
+            parameter_list[[parameter_name]][["value"]] = param_setting[["parameter"]][["value"]] 
+          }
         } else if(parameter_attributes[type_boolean] == "optionsType" & "value" %in% names(param_setting[["parameter"]])){
           if((is.null(param_setting[["parameter"]][["value"]]) || param_setting[["parameter"]][["value"]] == "null" )){
             option_settings = param_setting[["parameter"]][[parameter_attributes[type_boolean]]][["option"]]
@@ -159,6 +169,9 @@ test_config_update_xml <- function(config_file,option_list,parameters_to_check =
   if(is.null(parameters_to_check)){
     parameters_to_check = names(option_list)
   }
+  ### ensure that params.outdir is not overriden
+  additional_parameters_ignore = c('params.outdir')
+  ###########
   parameter_xml_file = paste(dirname(config_file),paste(basename(dirname(config_file)),".pipeline.xml",sep=""),sep="/")
   rlog::log_info(paste("UPDATING parameters XML file:",parameter_xml_file))
   doc = xmlToList(parameter_xml_file)
@@ -166,7 +179,7 @@ test_config_update_xml <- function(config_file,option_list,parameters_to_check =
   final_tool_params_list = parameters_to_list(tool_names)
   existing_parameters = names(final_tool_params_list)
   existing_parameters = apply(t(existing_parameters),2,function(x) paste("params.",x,sep=""))
-  parameters_to_check_bool = !parameters_to_check %in% existing_parameters
+  parameters_to_check_bool = !parameters_to_check %in% existing_parameters & !parameters_to_check %in% additional_parameters_ignore
   if(sum(parameters_to_check_bool) > 0){
     parameters_to_check = parameters_to_check[parameters_to_check_bool]
     if(length(parameters_to_check) > 0){
