@@ -18,7 +18,7 @@ parser$add_argument("-k","--is-simple-config","--is_simple_config",
                     action="store_true",default=FALSE, help = "Use config")
 parser$add_argument("-i","--configs-to-hardcode","--configs_to_hardcode", default="params_to_inject.txt",
                     help="config params to inject")
-parser$add_argument("-u","--instance-type-url","--instance_type_url", default="https://help.ica.illumina.com/project/p-flow/f-pipelines#definition",
+parser$add_argument("-u","--instance-type-url","--instance_type_url", default="https://help.ica.illumina.com/project/p-flow/f-pipelines#compute-types",
                     help = "URL that contains ICA instance type table")
 parser$add_argument("-a","--base-config-files","--base_config_files", default=c(""),nargs="?",
                     action="append", help = "configuration file for base configs of a pipeline")
@@ -58,6 +58,10 @@ default_instance = args$default_instance
 instance_type_table_url = args$instance_type_url
 rlog::log_debug(paste("URL_OF_INTEREST:",instance_type_table_url,collapse = " "))
 ica_instance_table = get_instance_type_table(url=instance_type_table_url)
+if(!"Mem (GB)" %in% colnames(ica_instance_table)){
+  ica_instance_table = as.data.frame(read.delim("ICA.compute_table.txt"))
+  colnames(ica_instance_table) = c("Compute Type","CPUs","Mem (GB)","Nextflow (pod.value)","CWL (type, size)")
+}
 ica_instance_table$CPUs = as.numeric(ica_instance_table$CPUs)
 ica_instance_table$`Mem (GB)` = as.numeric(ica_instance_table$`Mem (GB)`)
 additional_lines = c("process {",'\twithName:\'CUSTOM_DUMPSOFTWAREVERSIONS\' {',"\terrorStrategy = 'ignore'","\t}","}")
@@ -142,6 +146,15 @@ add_parameters_to_xml <- function(keys_to_add,xml_file,option_list){
       newXMLNode("description",paste("Configure",keys_to_add[lv]),parent=nested_parameter_node)
       # remove double-quotes
       option_list[[keys_to_add[lv]]] = gsub("\"","",option_list[[keys_to_add[lv]]])
+      if(grepl("\\/\\/",option_list[[keys_to_add[lv]]])){
+        additional_split = strsplit(option_list[[keys_to_add[lv]]],"\\/\\/")[[1]]
+        additional_split = apply(t(additional_split),2,trimws)
+        if(length(additional_split)>0 & additional_split[1] != ""){
+          option_list[[keys_to_add[lv]]] = additional_split[1]
+        } else{
+          option_list[[keys_to_add[lv]]] = ""
+        }
+      }
       ##############
       if(!is.na(strtoi(option_list[[keys_to_add[lv]]]))){
         parameter_type = 'integerType'
@@ -179,9 +192,10 @@ test_config_update_xml <- function(config_file,option_list,parameters_to_check =
   final_tool_params_list = parameters_to_list(tool_names)
   existing_parameters = names(final_tool_params_list)
   existing_parameters = apply(t(existing_parameters),2,function(x) paste("params.",x,sep=""))
-  parameters_to_check_bool = !parameters_to_check %in% existing_parameters & !parameters_to_check %in% additional_parameters_ignore
+  parameters_to_check_bool = !parameters_to_check %in% existing_parameters 
   if(sum(parameters_to_check_bool) > 0){
     parameters_to_check = parameters_to_check[parameters_to_check_bool]
+    print(parameters_to_check)
     if(length(parameters_to_check) > 0){
       add_parameters_to_xml(parameters_to_check,parameter_xml_file,option_list)
     } else{

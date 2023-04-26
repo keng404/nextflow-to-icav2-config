@@ -201,14 +201,16 @@ get_instance_type_table <- function(url){
       computeTypes = TRUE
       
     } else if(grepl("cpu",text_of_interest) || grepl("small",text_of_interest) || grepl("medium",text_of_interest) || grepl("large",text_of_interest)){
-      cpuReference = TRUE
+      if(!grepl("storage size",text_of_interest,ignore.case=T)){
+        cpuReference = TRUE
+      }
     } else{
       computeTypes = FALSE
     }
     
     if(computeTypes || cpuReference){
       #print(html_attrs(html_div_nodes[nodes_to_check[i]]))
-      #print(html_div_nodes[nodes_to_check[i]] %>% html_text2())
+      print(html_div_nodes[nodes_to_check[i]] %>% html_text2())
       new_line = strsplit(text_of_interest,"\t|\n")[[1]]
       new_line = new_line[new_line!=""]
       #lines_to_keep = c(lines_to_keep,new_line)
