@@ -1,0 +1,18 @@
+Compute Type	CPUs	Mem (GB)	Nextflow (pod.value)	CWL (type, size)
+standard-small	2	8	standard-small	standard, small
+standard-medium	4	16	standard-medium	standard, medium
+standard-large	8	32	standard-large	standard, large
+standard-xlarge	16	64	standard-xlarge	standard, xlarge
+standard-2xlarge	32	128	standard-2xlarge	standard, 2xlarge
+hicpu-small	16	32	hicpu-small	hicpu, small
+hicpu-medium	36	72	hicpu-medium	hicpu, medium
+hicpu-large	72	144	hicpu-large	hicpu, large
+himem-small	8	64	himem-small	himem, small
+himem-medium	16	128	himem-medium	himem, medium
+himem-large	48	384	himem-large	himem, large
+himem-xlarge	96	768	himem-xlarge	himem, xlarge
+hiio-small	2	16	hiio-small	hiio, small
+hiio-medium	4	32	hiio-medium	hiio, medium
+fpga-small	8	122	fpga-small	fpga, small
+fpga-medium	16	244	fpga-medium	fpga, medium
+fpga-large	64	976	fpga-large	fpga, large
