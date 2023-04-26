@@ -169,9 +169,13 @@ test_config_update_xml <- function(config_file,option_list,parameters_to_check =
   parameters_to_check_bool = !parameters_to_check %in% existing_parameters
   if(sum(parameters_to_check_bool) > 0){
     parameters_to_check = parameters_to_check[parameters_to_check_bool]
-    add_parameters_to_xml(parameters_to_check,parameter_xml_file,option_list)
+    if(length(parameters_to_check) > 0){
+      add_parameters_to_xml(parameters_to_check,parameter_xml_file,option_list)
+    } else{
+      rlog::log_info(paste("No updates needed for:",parameter_xml_file))
+    }
   } else{
-    rlog::log_warn(paste("No updates needed for:",parameter_xml_file))
+    rlog::log_info(paste("No updates needed for:",parameter_xml_file))
   }
 }
 #################################################
