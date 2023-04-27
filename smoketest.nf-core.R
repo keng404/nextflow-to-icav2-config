@@ -1008,7 +1008,7 @@ for( i in 1:length(pipeline_creation_jsons)){
         rlog::log_info(paste("LOOKING_AT_POTENTIAL_PARAMETER_UPDATE:",param_full))
         if(param_full %in% names(smoke_test_override) & !param_full %in% params_keep){
           updated_value  = smoke_test_override[[param_full]]
-          if(grepl("\\/\\/",updated_value)){
+          if(grepl("\\/\\/",updated_value) & sum(apply(t(c("s3","http","ftp")),2,function(x) grepl(x,updated_value))) == 0){
             additional_split = strsplit(updated_value,"\\/\\/")[[1]]
             if(length(additional_split) > 1 & additional_split[1] != ""){
               updated_value = additional_split[1] 
@@ -1017,7 +1017,7 @@ for( i in 1:length(pipeline_creation_jsons)){
             }
           }
           if(grepl("'",updated_value)){
-            if(grepl("^'",updated_value) & grepl("'$",updated_value)){
+            if(!(grepl("^'",updated_value) & grepl("'$",updated_value))){
               updated_value = gsub("'","",updated_value)
               updated_value = paste("'",updated_value,"'",sep="")
             }
