@@ -1007,8 +1007,17 @@ for( i in 1:length(pipeline_creation_jsons)){
         param_full = paste("params.",param,sep="")
         rlog::log_info(paste("LOOKING_AT_POTENTIAL_PARAMETER_UPDATE:",param_full))
         if(param_full %in% names(smoke_test_override) & !param_full %in% params_keep){
-          rlog::log_info(paste("SMOKE_TEST_OVERRIDE parameter:",param,"value:",smoke_test_override[[param_full]]))
-          revised_template_json_list[["parameters"]][[param]][["value"]] = smoke_test_override[[param_full]]
+          updated_value  = smoke_test_override[[param_full]]
+          if(grepl("\\/\\/",updated_value)){
+            additional_split = strsplit(updated_value,"\\/\\/")[[1]]
+            if(length(additional_split) > 1 & additional_split[1] != ""){
+              updated_value = additional_split[1] 
+            } else{
+              updated_value = updated_value
+            }
+          }
+          rlog::log_info(paste("SMOKE_TEST_OVERRIDE parameter:",param,"value:",updated_value))
+          revised_template_json_list[["parameters"]][[param]][["value"]] = updated_value
         }
       }
     }
