@@ -1016,6 +1016,12 @@ for( i in 1:length(pipeline_creation_jsons)){
               updated_value = updated_value
             }
           }
+          if(grepl("'",updated_value)){
+            if(grepl("^'",updated_value) & grepl("'$",updated_value)){
+              updated_value = gsub("'","",updated_value)
+              updated_value = paste("'",updated_value,"'",sep="")
+            }
+          }
           rlog::log_info(paste("SMOKE_TEST_OVERRIDE parameter:",param,"value:",updated_value))
           revised_template_json_list[["parameters"]][[param]][["value"]] = updated_value
         }
