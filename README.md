@@ -51,6 +51,7 @@ The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-
 This has:
   - nf-core installed
   - All Rscripts in this repo with relevant R libraries installed
+  - The ICA CLI installed, to allow for pipeline creation and CLI templates to request pipeline runs after the pipeline is created in ICA
   
 You'll likely need to run the image with a docker command like this for you to be able to run git commands within the container:
 ```bash
