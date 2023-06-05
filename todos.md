@@ -35,6 +35,8 @@ STEPS performed in this code:
 - STEP 2 : generate XML from ```nextflow_schema.json``` or generate XML from ```main.nf``` and config files
 - STEP 3 : make final edits to XML and create pipeline in ICA
 - STEP 4 : create CLI stub to launch pipeline
+	1) Convert to API call to have more features for pipeline submission
+		- will add more documentation + details  
 - STEP 5 : create smoke tests for pipeline
 
 #############################################
