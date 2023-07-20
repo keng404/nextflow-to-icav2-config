@@ -96,10 +96,13 @@ Rscript nf-core.conversion_wrapper.R --input {PIPELINE_JSON_FILE} --staging_dire
 
 [OPTIONAL PARAMETER]
 --git-repos {GIT_HUB_URL}
+--pipeline-dirs {LOCAL_DIRECTORY_WITH_NEXTFLOW_PIPELINE}
 ```
 
 ```GIT_HUB_URL``` can be specified to grab pipeline code from github. If you intend to liftover anything in the master branch, your ```GIT_HUB_URL``` might look like ```https://github.com/keng404/my_pipeline```. 
 If there is a specific release tag you intend to use, you can use the convention ```https://github.com/keng404/my_pipeline:my_tag```
+
+Alternatively if you have a local copy/version of a nextflow pipeline you'd like to convert and use in ICA, you can use the ```--pipeline-dirs``` argument to specify this.
 
 In summary, you will may need the following prerequisites, either to run the wrapper referenced above or to carry out individual steps below.
 - 1) ```git clone``` nf-core pipelines of interest
