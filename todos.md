@@ -4,14 +4,14 @@
 nextflow pipeline of interest that you are developing or a pipeline that is nf-core like
 2) To run these scripts, you'll need to be in the same directory where you've downloaded them to (i.e. run a git clone command)
 3) Git hub creds ???
-4) A nextflow pipeline that is inspired by pipelines written by the nf-core community
+4) A Nextflow pipeline that is inspired by pipelines written by the nf-core community
 
 
 # DOCUMENTATION TOPICS
 
 ## Why does this code exists
 	 - programmatic update and creation of nf-core pipelines and nf-core 'like' pipelines into ICAv2
-## HOW to run this code
+## How to run this code
 	- Docker
 	- Local
 	- ICAv2 CLI with API Key generated
@@ -19,8 +19,8 @@ nextflow pipeline of interest that you are developing or a pipeline that is nf-c
 ## ICA pipeline orientation
 ### How to create a pipeline in ICA
 - XML file
-	- do you have nextflow_schema.json
-	- what if you don't?
+	- Do you have a ```nextflow_schema.json``` file associated with your Nextflow pipeline?
+	- What if you don't?
 - pipeline code (nextflow/CWL)
 - Configuration files
 	- how input is staged in ICA relative to ```workflow.launchDir``` and ```workflow.workDir```
@@ -48,21 +48,22 @@ Change order params are added so that the params injected comes before params st
 	- TBD
 - [ ] 4) Turn repo into R library 
 - [X] 5) Documentation update  -- SEE ABOVE
-- [X] 6) find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
+- [X] 6) Find ways to consume configurations hosted on GitHub and not locally --- so that parameters are set in XML
 	- Usually has to do with genome/reference configuration. For example [this](https://github.com/keng404/ica_nextflow_demos/blob/master/rnaseq/nextflow.config#L130). I have code to identify and interpret these expresssions, but I need to consume and figure out a creative way to  add this to the XML.  	
-- [X] 7) find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
+- [X] 7) Find paths to expand so that ICA can find them when running the pipeline --- add to ```develop_mode.downstream.R```
 - [ ] 8) Add a diff between the converted pipeline and the original soure --- generate PDF of differences
-	- try using [diff2html](https://github.com/rtfpessoa/diff2html)
-	- with addition Rmarkdown -> PDF report
-- [ ] 9) helper function to 'update' pipeline
-	- upload workflow, module,subworkflow, assets, and bin directories to ICA via the CLI
-	- avoid behavior of creating new versions of pipelines each time
-	- add tag to pipeline metadata?
+	- Try using [diff2html](https://github.com/rtfpessoa/diff2html)
+	- With addition Rmarkdown -> PDF report
+- [ ] 9) Helper function to 'update' pipeline
+	- Upload workflow, module,subworkflow, assets, and bin directories to ICA via the CLI
+	- Avoid behavior of creating new versions of pipelines each time
+	- Add tag to pipeline metadata?
 		- versionComment in request body for [this ICA API endpoint](https://ica.illumina.com/ica/api/swagger/index.html#/Project%20Pipeline/createNextflowPipeline)
 - [ ] 10) Add some comments about docker scope as implemented in nextflow ([DockerBuilder.groovy](https://github.com/nextflow-io/nextflow/blob/master/modules/nextflow/src/main/groovy/nextflow/container/DockerBuilder.groovy))
-- [ ] 11) a html table that lists what nf-core pipelines have been lifted over
+- [X] 11) An html table that lists what nf-core pipelines have been lifted over
+	- See this [list](https://github.com/keng404/ica_nextflow_demos_v2#current-testing-results) 	
 - [ ] 12) Troubleshooting guide --- what if you run into error
-	- error message is likely related to the following:
+	- Error message is likely related to the following:
 		- 1) Check XML file to see if it's malformed or have the parameter/dataInput needed for your pipeline
 		- 2) Check config (```nextflow.ica.config``` or ```conf/base.ica.config``` ) files for syntax errors
 		- 3) Look at module, workflow,subworkflow, or main.nf files for any additional syntax errors
