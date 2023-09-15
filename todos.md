@@ -1,5 +1,5 @@
-# prereqs
-1) python module nf-core installed
+# Prereqs
+1) python module ```nf-core``` installed
 -- easier to do within Docker container
 nextflow pipeline of interest that you are developing or a pipeline that is nf-core like
 2) To run these scripts, you'll need to be in the same directory where you've downloaded them to (i.e. run a git clone command)
