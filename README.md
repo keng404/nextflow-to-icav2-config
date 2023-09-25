@@ -165,6 +165,9 @@ You can specify the name of this JSON file with the parameter ```--output-json``
 
 Once you modify this file, you can use ```--template-json``` and specify this file to create the CLI you can use to launch your pipeline. 
 
+If you have a previously successful analysis with your pipeline, you may find this approach more useful.
+ - Relaunch pipeline analysis [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/relaunch_pipeline.py)  and [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/requeue.md).
+
 # Creating your	own tests/pipeline runs	via the	CLI
 Where possible, these scripts search for config files that refer to a test (i.e. test.config,test_full.config,test*config) and creates a boolean parameter ```params.ica_smoke_test```
 that can be toggled on/off as a sanity check that the pipeline works as intended. By default, this parameter is set to ```false```.
