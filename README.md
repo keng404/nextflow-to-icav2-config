@@ -158,7 +158,7 @@ Add the flag ```--developer-mode``` to the command line above if you have custom
 # How to run a pipeline in  ICA via CLI
 As a convenience, you can also get a templated CLI command to help run a pipeline (i.e. submit a pipeline request) in ICA via the following:
 ```bash
-Rscript create_cli_templates_from_xml.R --pipeline-name {PIPELINE_NAME} --workflow-language {xml or nextflow} --parameters-xml {PATH_TO_PARAMETERS_XML}
+Rscript create_cli_templates_from_xml.R --workflow-language {xml or nextflow} --parameters-xml {PATH_TO_PARAMETERS_XML}
 ```
 There will be a corrsponding JSON file (i.e. a file with a file extension ```*ICAv2_CLI_template.json```)  that saves these values that one could modify and configure to build out templates or launch the specific pipeline run you desire.
 You can specify the name of this JSON file with the parameter ```--output-json```
