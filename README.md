@@ -8,7 +8,7 @@ Some examples of Nextflow pipelines that have been lifted over with this repo ca
 Some additional examples of ICA-ported Nextflow pipelines are [here](https://github.com/keng404/ica_nextflow_demos). 
 
 Some additional repos that can help with your ICA experience can be found below:
-  - Relaunch pipeline analysis [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/relaunch_pipeline.py) and [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/requeue.md)
+  - Relaunch pipeline analysis [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/relaunch_pipeline.py) and [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/requeue.md). An interactive application that can help you create CLI and API templates to submit pipeline runs can be found [here](https://keneng87.pyscriptapps.com/ica-analysis-requeue/latest/)
   - Monitor your analysis run in ICA and troubleshoot [here](https://github.com/keng404/monitor_ica_analysis_run)
   - Wrap a WDL-based workflow in a [CWL wrapper](https://github.com/keng404/wdl_test)
   - Wrap a Nextflow-based workflow in a [CWL wrapper](https://github.com/keng404/nextflow_test)
