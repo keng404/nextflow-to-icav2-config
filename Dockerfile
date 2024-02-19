@@ -1,15 +1,15 @@
-FROM r-base:4.0.2
+FROM r-base:4.1.2
 RUN apt-get update -y && \
     apt-get install -y curl libxml2-dev libssl-dev libcurl4-openssl-dev python-dev-is-python3 git
 ### copy in scripts
 COPY *.R /usr/local/bin/
-COPY testing_pipelines /usr/local/bin/
-COPY pipeline_development /usr/local/bin/
-COPY design_docs /usr/local/bin/
-COPY ica_configure /usr/local/bin/
-COPY launch_pipelines /usr/local/bin/
-COPY create_xml /usr/local/bin/
-COPY create_pipeline_on_ica /usr/local/bin/
+COPY testing_pipelines /usr/local/bin/testing_pipelines/
+COPY pipeline_development /usr/local/bin/pipeline_developement/
+COPY design_docs /usr/local/bin/design_docs/
+COPY ica_configure /usr/local/bin/ica_configure/
+COPY launch_pipelines /usr/local/bin/launch_pipelines/
+COPY create_xml /usr/local/bin/create_xml/
+COPY create_pipeline_on_ica /usr/local/bin/create_pipeline_on_ica/
 ENV PATH $PATH:/usr/local/bin/testing_pipelines:/usr/local/bin/design_docs:/usr/local/bin/pipeline_development:/usr/local/bin/ica_configure:/usr/local/bin/launch_pipelines:/usr/local/bin/legacy:/usr/local/bin/create_xml:/usr/local/bin/create_pipeline_on_ica
 ### install R packages
 RUN apt-get update -y && \
