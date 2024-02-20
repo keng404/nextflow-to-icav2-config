@@ -43,7 +43,7 @@ These scripts have been made to be compatible with [nf-core](https://github.com/
 
 # Using these scripts
 
-The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-icav2-config:0.0.4```
+The scripts mentioned below can be run in a docker image ``keng404/nextflow-to-icav2-config:0.0.5```
 
 This has:
   - nf-core installed
@@ -52,7 +52,7 @@ This has:
   
 You'll likely need to run the image with a docker command like this for you to be able to run git commands within the container:
 ```bash
-docker run -itv `pwd`:`pwd` -e HOME=`pwd` -u $(id -u):$(id -g) keng404/nextflow-to-icav2-config:0.0.4 /bin/bash
+docker run -itv `pwd`:`pwd` -e HOME=`pwd` -u $(id -u):$(id -g) keng404/nextflow-to-icav2-config:0.0.5 /bin/bash
 ```
 
 where ````pwd```` is your ```$HOME``` directory
