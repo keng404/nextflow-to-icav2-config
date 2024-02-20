@@ -440,14 +440,14 @@ if(args$developer_mode){
   }
   ## add smoke test to ICA XML file
   smoke_test_in_config_bool = smoke_test_in_config(nextflow_config)
-  if(smoke_test_in_config_bool){
-    xml_list = XML::xmlToList(parameter_xml_file)
+  if(smoke_test_in_config_bool & !is.null(xml_file) & args$parameters_xml_override ){
+    xml_list = XML::xmlToList(xml_file)
     tool_names = xml_list[["steps"]]
     if(!ica_smoke_test_in_parameters_list(tool_names)){
       ###### Grab all parameters from XML under each tool and output to list ----
-      add_ica_smoke_test_to_parameters_list(xml_file = parameter_xml_file)
+      add_ica_smoke_test_to_parameters_list(xml_file = xml_file)
     } else{
-      rlog::log_info(paste("Already found ica_smoke_test in the xml:",parameter_xml_file))
+      rlog::log_info(paste("Already found ica_smoke_test in the xml:",xml_file))
     }
   } else{
     rlog::log_info(paste("No smoke test reference found in:",smoke_test_in_config_bool))

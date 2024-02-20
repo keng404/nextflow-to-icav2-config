@@ -51,3 +51,4 @@ WORKDIR /scripts
 ### ensure all executables and scripts can be run
 RUN chmod -R 777 ${SCRIPT_DIR}
 RUN apt-get update -y && apt-get -y install openssl
+RUN adduser --disabled-password --gecos '' icauser
