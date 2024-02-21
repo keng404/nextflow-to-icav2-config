@@ -6,9 +6,6 @@ suppressPackageStartupMessages(library("argparse"))
 # create parser object
 parser <- ArgumentParser()
 
-#nfcore_bundle_info = read.csv('/Users/keng/icav2.nfcore_bundle.manifest.20220624.csv')
-#demo_data_manifest = read.delim('/Users/keng/DRAGEN.ICA_demo_data.manifest.tsv',header=FALSE)
-#server_url = "stage.v2.stratus.illumina.com"
 parser$add_argument("-n","--nfcore-bundle-file","--nfcore_bundle_file", required = TRUE,
                     default=NULL, help = "nf-core bundle metadata file")
 parser$add_argument("-d","--demo-data-file","--demo_data_file", required = TRUE,
