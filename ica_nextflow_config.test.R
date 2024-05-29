@@ -57,8 +57,12 @@ ica_instance_namespace = args$ica_instance_namespace
 default_instance = args$default_instance
 instance_type_table_url = args$instance_type_url
 rlog::log_debug(paste("URL_OF_INTEREST:",instance_type_table_url,collapse = " "))
+ica_instance_table = NULL
 ica_instance_table = get_instance_type_table(url=instance_type_table_url)
-if(!"Mem (GB)" %in% colnames(ica_instance_table)){
+if( is.null(ica_instance_table)){
+  ica_instance_table = as.data.frame(read.delim("ICA.compute_table.txt"))
+  colnames(ica_instance_table) = c("Compute Type","CPUs","Mem (GB)","Nextflow (pod.value)","CWL (type, size)")
+} else if(!"Mem (GB)" %in% colnames(ica_instance_table)){
   ica_instance_table = as.data.frame(read.delim("ICA.compute_table.txt"))
   colnames(ica_instance_table) = c("Compute Type","CPUs","Mem (GB)","Nextflow (pod.value)","CWL (type, size)")
 }

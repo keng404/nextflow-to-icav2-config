@@ -188,10 +188,11 @@ get_instance_type_table <- function(url){
   html = read_html(url,encoding = "ISO-8859-1")
   html_div_nodes = html %>% html_elements("tr")
   nodes_that_have_table_data = html %>% html_elements("tr") %>% html_attr("data-rnwi-handle")
-  
   nodes_to_check = (1:length(html_div_nodes))[nodes_that_have_table_data == "table-row"]
   nodes_to_check = nodes_to_check[!is.na(nodes_to_check)]
-  
+  if(length(nodes_to_check) == 0){
+    return(NULL)
+  }
   computeTypes = FALSE
   lines_to_keep = c()
   for(i in 1:length(nodes_to_check)){

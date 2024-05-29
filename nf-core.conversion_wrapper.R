@@ -204,7 +204,7 @@ if(!is.null(input_json)){
     for(j in 1:length(pipeline_dirs)){
       pipeline_dir_of_interest = pipeline_dirs[j]
       setwd(staging_directory)
-      copy_cmd = paste("cp -r",pipeline_dir_of_interest,"$PWD")
+      copy_cmd = paste("cp -r",pipeline_dir_of_interest,".")
       rlog::log_info(paste("Migrate directory to staging directory"))
       system(copy_cmd)
     }
@@ -216,6 +216,14 @@ if(!is.null(input_json)){
 rlog::log_info(paste("Generate parameter XML files"))
 dirs_of_interest = list.dirs(staging_directory,recursive = FALSE) 
 schema_jsons = list.files(staging_directory,pattern="nextflow_schema.json",full.names=T,recursive = T)
+max_depth = min(apply(t(dirs_of_interest),2,function(x) length(strsplit(x,"/")[[1]])))
+apply(t(schema_jsons),2,function(x) length(strsplit(x,"/")[[1]]) - max_depth)
+valid_json_paths = apply(t(schema_jsons),2,function(x) (length(strsplit(x,"/")[[1]]) - max_depth ) == 1)
+if(sum(valid_json_paths) == 0){
+  stop(paste("Could not find valid nextflow_schema.json paths in ",staging_directory,sep = " ", collapse = " "))
+} else{
+  schema_jsons = schema_jsons[valid_json_paths]
+}
 for(k in 1:length(schema_jsons)){
   setwd(run_scripts)
   run_cmd = paste("Rscript create_xml/nf-core.json_to_params_xml.R --json",schema_jsons[k])
