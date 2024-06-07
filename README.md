@@ -94,10 +94,16 @@ Rscript nf-core.conversion_wrapper.R --input {PIPELINE_JSON_FILE} --staging_dire
 [OPTIONAL PARAMETER]
 --git-repos {GIT_HUB_URL}
 --pipeline-dirs {LOCAL_DIRECTORY_WITH_NEXTFLOW_PIPELINE}
+
+[OPTIONAL FLAG]
+--in-docker {identify if script is run within the docker image/container}
 ```
 
 ```GIT_HUB_URL``` can be specified to grab pipeline code from github. If you intend to liftover anything in the master branch, your ```GIT_HUB_URL``` might look like ```https://github.com/keng404/my_pipeline```. 
 If there is a specific release tag you intend to use, you can use the convention ```https://github.com/keng404/my_pipeline:my_tag```.
+
+
+If you are running these scripts in a Docker image, ```--in-docker``` is a flag we recommend you do ***add*** to your command line to ensure that the sanity check is skipped. Sanity check is run in nextflow Docker images (docker within docker is not supported.
 
 Alternatively, if you have a local copy/version of a Nextflow pipeline you'd like to convert and use in ICA, you can use the ```--pipeline-dirs``` argument to specify this.
 

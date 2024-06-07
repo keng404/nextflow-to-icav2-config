@@ -36,6 +36,8 @@ parser$add_argument("-n", "--pipeline-name-prefix","--pipeline_name_prefix", def
                     help="ICA pipeline name prefix")
 parser$add_argument("-m","--nf-core-mode","--nf_core_mode",action="store_true",
                     default=FALSE, help = "flag to indicate nf-core pipeline")
+parser$add_argument("-q","--in-docker","--in_docker",action="store_true",
+                    default=FALSE, help = "flag to indicate if this script is run within a docker image/container")
 parser$add_argument("-g","--git-repos","--git_repos",default=c(""),nargs="?",
                     help = "git repositories to convert")
 parser$add_argument("-l","--pipeline-dirs","--pipeline_dirs", default=c(""),nargs="?",
@@ -349,9 +351,9 @@ if(length(schema_jsons) >0 ){
         rlog::log_info(paste("ADDING dummy process to copy intermediate files from",args$intermediate_copy_template))
         if(scripts_to_create[l] %in% names(nextflow_scripts)){
           if(scripts_to_create[l] %in% names(base_configs_list)){
-            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_scripts[[scripts_to_create[l]]],"--base-config-files" ,base_configs_list[[scripts_to_create[l]]] )
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_configs[[scripts_to_create[l]]],"--base-config-files" ,base_configs_list[[scripts_to_create[l]]] )
           } else{
-            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_scripts[[scripts_to_create[l]]])
+            run_cmd = paste("Rscript ica_nextflow_config.test.R --config-file",nextflow_configs[[scripts_to_create[l]]])
           }
         } else{
           if(scripts_to_create[l] %in% names(base_configs_list)){
@@ -526,15 +528,18 @@ if(args$create_pipeline_in_ica){
         xml_files = xml_files[!grepl("nfcore",xml_files)]
         xml_files = xml_files[!apply(t(xml_files),2,function(x) strsplit(basename(x),"\\.")[[1]][2] == "nf-core")]
         sanity_check = paste("Rscript testing_pipelines/test_nextflow_script.R --nextflow-script", dsl2_nextflow_scripts[[scripts_to_create[l]]],"--docker-image nextflow/nextflow:22.04.3","--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))   
-        rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
-        sanity_check_out = system(sanity_check,intern = T)
-        passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
-        if(length(passed_sanity_check)==0){
-          passed_sanity_check = FALSE
-        }
-        rlog::log_info(paste(dsl2_nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
-        if(!passed_sanity_check){
-          rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+        # run sanity check if running in Docker image/container
+        if(!args$in_docker){
+          rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
+          sanity_check_out = system(sanity_check,intern = T)
+          passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
+          if(length(passed_sanity_check)==0){
+            passed_sanity_check = FALSE
+          }
+          rlog::log_info(paste(dsl2_nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+          if(!passed_sanity_check){
+            rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+          }
         }
         if(length(xml_files)>0 & passed_sanity_check){
           pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
