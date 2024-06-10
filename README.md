@@ -43,7 +43,7 @@ These scripts have been made to be compatible with [nf-core](https://github.com/
 
 # Using these scripts
 
-The scripts mentioned below can be run in a docker image ``keng404/nextflow-to-icav2-config:0.0.7```
+The scripts mentioned below can be run in a docker image ```keng404/nextflow-to-icav2-config:0.0.7```
 
 This has:
   - nf-core installed
