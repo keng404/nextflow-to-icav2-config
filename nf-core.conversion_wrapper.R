@@ -491,15 +491,19 @@ if(args$create_pipeline_in_ica){
       setwd(run_scripts)
       if(scripts_to_create[l] %in% names(nextflow_scripts)){
       sanity_check = paste("Rscript testing_pipelines/test_nextflow_script.R --nextflow-script", nextflow_scripts[[scripts_to_create[l]]],"--docker-image nextflow/nextflow:22.04.3","--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]]))   
-      rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
-      sanity_check_out = system(sanity_check,intern = T)
-      passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
-      if(length(passed_sanity_check)==0){
-        passed_sanity_check = FALSE
-      }
-      rlog::log_info(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
-      if(!passed_sanity_check){
-        rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+      if(!args$in_docker){
+        rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
+        sanity_check_out = system(sanity_check,intern = T)
+        passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
+        if(length(passed_sanity_check)==0){
+          passed_sanity_check = FALSE
+        }
+        rlog::log_info(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+        if(!passed_sanity_check){
+          rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
+        }
+      } else{
+        passed_sanity_check = TRUE
       }
       xml_files = list.files(dirname(nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
       xml_files = xml_files[!grepl("nfcore",xml_files)]
@@ -520,6 +524,8 @@ if(args$create_pipeline_in_ica){
             rlog::log_info(paste("Running",run_cmd))
             system(run_cmd)
           }
+        } else if(!passed_sanity_check){
+          rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
         } else{
         rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".nf",nextflow_scripts[[scripts_to_create[l]]])))
         }
@@ -540,6 +546,8 @@ if(args$create_pipeline_in_ica){
           if(!passed_sanity_check){
             rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
           }
+        } else{
+          passed_sanity_check = TRUE
         }
         if(length(xml_files)>0 & passed_sanity_check){
           pipeline_name = paste(args$pipeline_name_prefix,strsplit(basename(xml_files[1]),"\\.")[[1]][1],sep="")
@@ -557,6 +565,8 @@ if(args$create_pipeline_in_ica){
             rlog::log_info(paste("Running DSL2-enabled pipeline creation",run_cmd))
             system(run_cmd)
           } 
+        } else if(!passed_sanity_check){
+          rlog::log_error(paste(nextflow_scripts[[scripts_to_create[l]]],"passed sanity check:",passed_sanity_check))
         } else{
           rlog::log_warn(paste("CANNOT find xml for:",gsub(".nf$",".nf",dsl2_nextflow_scripts[[scripts_to_create[l]]])))
         }
