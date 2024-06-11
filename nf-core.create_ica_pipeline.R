@@ -31,7 +31,7 @@ parser$add_argument("-v","--pipeline-name","--pipeline_name",required = TRUE,
 parser$add_argument("-g","--code-project-directory","--code-project_directory",
                     default=NULL, help = "directory with other files of interest")
 parser$add_argument("-f","--nextflow-version","--nextflow_version",
-                    default="20.10.0", help = "nextflow_version")
+                    default="22.04.3", help = "nextflow_version")
 parser$add_argument("-p","--ica-project-name","--ica_project_name",
                     default=NULL, help = "ICA project name")
 parser$add_argument("-i","--ica-project-id","--ica_project_id",
