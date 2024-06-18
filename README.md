@@ -162,7 +162,7 @@ Rscript nf-core.create_ica_pipeline.R --nextflow-script {NF_SCRIPT} --workflow-l
 ### Developer mode --- if you plan to develop or modify a pipeline in ICA
 Add the flag ```--developer-mode``` to the command line above if you have custom groovy libraries or modules files referenced in your workflow. When this flag is specified, the script will upload these files and directories to ICA and update the parameters XML file to allow you to specify directories under the parameters ```project_dir``` and files under ```input_files```. This will ensure that these files and directories will be placed in the ```$workflow.launchDir``` when the pipeline is invoked.
 
-# How to run a pipeline in  ICA via CLI
+# How to run a pipeline in ICA via CLI
 As a convenience, you can also get a templated CLI command to help run a pipeline (i.e. submit a pipeline request) in ICA via the following:
 ```bash
 Rscript create_cli_templates_from_xml.R --workflow-language {xml or nextflow} --parameters-xml {PATH_TO_PARAMETERS_XML}
@@ -174,6 +174,11 @@ Once you modify this file, you can use ```--template-json``` and specify this fi
 
 If you have a previously successful analysis with your pipeline, you may find this approach more useful.
  - Relaunch pipeline analysis [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/relaunch_pipeline.py)  and [here](https://github.com/keng404/bssh_parallel_transfer/blob/master/requeue.md).
+
+# ica_analysis_requeue_webapp
+For a more interactive method of crafting both CLI and API templates, here is a pyscript-based web app that allows a user to generate CLI and API requeue templates for Illumina Connected Analytics (ICA)
+
+See [here](https://keneng87.pyscriptapps.com/ica-analysis-requeue/latest/) to interact with it live.
 
 # Creating your	own tests/pipeline runs	via the	CLI
 Where possible, these scripts search for config files that refer to a test (i.e. test.config,test_full.config,test*config) and creates a boolean parameter ```params.ica_smoke_test```
