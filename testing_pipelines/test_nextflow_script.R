@@ -12,6 +12,8 @@ parser$add_argument("-s", "--nextflow-script","--nextflow_script", default = NUL
                     help="input nf-core pipeline script")
 parser$add_argument("-d", "--docker-image","--docker_image", default ="nextflow/nextflow:20.10.0", required = FALSE,
                     help="docker image")
+parser$add_argument("-q","--in-docker","--in_docker",action="store_true",
+                    default=FALSE, help = "flag to indicate if this script is run within a docker image/container")
 ########################################
 args <- parser$parse_args()
 nextflow_script = args$nextflow_script
@@ -35,16 +37,21 @@ if(!file.exists(main_config)){
     rlog::log_error(paste("Cannot find the script",nextflow_script))
     stop()
 }
-docker_binary_check = system("which docker",intern = TRUE)
 docker_binary_check_bool = FALSE
-if(length(docker_binary_check) > 0){
-  docker_binary_check_bool = apply(t(docker_binary_check),2, function(x) grepl("docker",x))
+if(!args$in_docker){
+  docker_binary_check = system("which docker",intern = TRUE)
+  if(length(docker_binary_check) > 0){
+    docker_binary_check_bool = apply(t(docker_binary_check),2, function(x) grepl("docker",x))
+  }
 }
-if(sum(docker_binary_check_bool) > 0){
+if(sum(docker_binary_check_bool) > 0 & !args$in_docker){
   nextflow_cmd = paste("docker run -it --rm",create_mount_string(nextflow_script),docker_image,"nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
+} else if(args$in_docker){
+  setwd(dirname(nextflow_script))
+  nextflow_cmd = paste("nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
 } else{
-  setwd(dirname(script_path))
-  docker_cmd = paste("nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
+  setwd(dirname(nextflow_script))
+  nextflow_cmd = paste("nextflow run",basename(nextflow_script),"-c",basename(main_config),"--input","input.csv")
   
 }
 rlog::log_info(paste("RUNNING CMD:",nextflow_cmd))

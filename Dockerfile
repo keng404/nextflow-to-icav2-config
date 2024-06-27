@@ -1,4 +1,4 @@
-FROM r-base:4.1.2
+FROM r-base:4.3.1
 RUN apt-get update -y && \
     apt-get install -y curl libxml2-dev libssl-dev libcurl4-openssl-dev python-dev-is-python3 git
 ### copy in scripts
@@ -19,10 +19,14 @@ RUN apt-get update -y && \
     apt-get install -y libssl-dev  ca-certificates build-essential && \
         update-ca-certificates
 RUN Rscript ${SCRIPT_DIR}/install_packages.R
-ENV CLI_VERSION "2.2.0"
+ENV CLI_VERSION "2.27.0"
 ### install ica CLI
-RUN wget -O ${SCRIPT_DIR}/icav2 "https://stratus-documentation-us-east-1-public.s3.amazonaws.com/cli/${CLI_VERSION}/linux/icav2"  && \
-    chmod u+x ${SCRIPT_DIR}/icav2    
+RUN cd ${SCRIPT_DIR} && \
+    wget -O ica-linux-amd64.zip "https://stratus-documentation-us-east-1-public.s3.amazonaws.com/cli/${CLI_VERSION}/ica-linux-amd64.zip"  && \
+    unzip ica-linux-amd64.zip && \
+    chmod u+x ${SCRIPT_DIR}/linux-amd64/icav2
+#RUN wget -O ${SCRIPT_DIR}/icav2 "https://stratus-documentation-us-east-1-public.s3.amazonaws.com/cli/${CLI_VERSION}/linux/icav2"  && \
+#    chmod u+x ${SCRIPT_DIR}/icav2    
 #### for automating ICA CLI setup
 RUN apt-get install -y tcl8.6 && \
     apt-get install -y expect --fix-missing
@@ -44,11 +48,11 @@ RUN wget --no-check-certificate "https://github.com/nf-core/tools/archive/refs/t
 RUN apt-get install -y python3.11-venv && \
     python3 -m venv /usr/local/bin/myvirt && \
     /usr/local/bin/myvirt/bin/pip3 install nf-core
-ENV PATH $PATH:/usr/local/bin/myvirt/bin:${SCRIPT_DIR}
+ENV PATH $PATH:/usr/local/bin/myvirt/bin:${SCRIPT_DIR}:${SCRIPT_DIR}/linux-amd64
 COPY *.txt ${SCRIPT_DIR}/
 COPY *.config ${SCRIPT_DIR}/
 WORKDIR /scripts
 ### ensure all executables and scripts can be run
 RUN chmod -R 777 ${SCRIPT_DIR}
 RUN apt-get update -y && apt-get -y install openssl
-RUN adduser --disabled-password --gecos '' icauser
+####RUN adduser --disabled-password --gecos '' icauser

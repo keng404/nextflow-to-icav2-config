@@ -504,6 +504,10 @@ if(args$create_pipeline_in_ica){
         }
       } else{
         passed_sanity_check = TRUE
+        sanity_check = sanity_check = paste("Rscript testing_pipelines/test_nextflow_script.R --nextflow-script", nextflow_scripts[[scripts_to_create[l]]],"--in-docker","--nextflow-config",gsub(".config$",".ica.config",nextflow_configs[[scripts_to_create[l]]])) 
+        rlog::log_info(paste("RUNNING SANITY_CHECK:",sanity_check))
+        sanity_check_out = system(sanity_check,intern = T)
+        passed_sanity_check = grepl("PASSED",sanity_check_out[length(sanity_check_out)])
       }
       xml_files = list.files(dirname(nextflow_scripts[[scripts_to_create[l]]]),"*.pipeline.xml",full.names=T)
       xml_files = xml_files[!grepl("nfcore",xml_files)]

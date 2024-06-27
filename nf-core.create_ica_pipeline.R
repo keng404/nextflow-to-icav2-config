@@ -548,7 +548,7 @@ parsePipelineDescription <- function(pipeline_description,api_key){
       rlog::log_info(paste("Using the Nextflow Version",final_version,"associated with the UUID of",final_version_id))
       return(final_version_id)
     } else{
-      return(NULL)
+      return(nextflow_version_metadata_list[[known_versions[length(known_versions)]]])
     }
   }
 }
@@ -566,6 +566,25 @@ if(!is.null(final_nextflow_version)){
   pipeline_creation_request[["pipelineLanguageVersionId"]] = final_nextflow_version
 } else{
   rlog::log_info(paste("No nextflow version specified in documentation, defaulting to nextflow version",args$nextflow_version))
+  pipeline_language_version_url =paste("https://",args$base_ica_url,"/ica/rest/api/pipelineLanguages/nextflow/versions",sep="")
+  curl_command = paste("curl --verbose -vL -X 'GET'",pipeline_language_version_url)
+  curl_command = paste(curl_command,"-H 'accept: application/vnd.illumina.v3+json'")
+  curl_command = paste(curl_command,"-H 'X-API-Key:",paste(api_key,"'",sep=""))
+  curl_command = paste(curl_command,"-H 'Content-Type: application/vnd.illumina.v3+json'")
+  curl_response = rjson::fromJSON(json_str=system(curl_command,intern=T))
+  nextflow_version_metadata = curl_response$items 
+  nextflow_version_metadata_list = list()
+  if(length(nextflow_version_metadata) > 0){
+    for(iii in 1:length(nextflow_version_metadata)){
+      nextflow_version_metadata_list[[nextflow_version_metadata[[iii]]$name]] = nextflow_version_metadata[[iii]]$id
+    }
+  } else{
+    stop(paste("Did not get response from ",pipeline_language_version_url))
+  }
+  print(nextflow_version_metadata_list)
+  final_nextflow_version = nextflow_version_metadata_list[[args$nextflow_version]]
+  rlog::log_info(paste("Requesting nextflow version",final_nextflow_version))
+  pipeline_creation_request[["pipelineLanguageVersionId"]] = final_nextflow_version
 }
 ###### ATTEMPT ____ MANUALLY CREATE ACTUAL CURL COMMAND TO ICA API rest server to  create pipeline
 create_curl_command <- function(url,request){
@@ -608,8 +627,12 @@ create_curl_command <- function(url,request){
       } else if(names(request)[i] == "mainNextflowFile" || names(request)[i] == "workflowCwlFile"){
         string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],"'",sep=""))
         curl_command = paste(curl_command,string_to_add)
-      } else{
+      } else if(names(request)[i] == "pipelineLanguageVersionId"){
+        string_to_add = paste("-F",paste("'",names(request)[i],"=",request[[names(request)[i]]],"'",sep=""))
+        curl_command = paste(curl_command,string_to_add)
+        } else{
         rlog::log_warn(paste("NOT SURE what to do with",names(request)[i],":",paste(request[[names(request)[i]]],collapse=", ")))
+
       }
     }
   }

@@ -892,7 +892,7 @@ loadModuleMetadata <- function(config_files){
               moduleMetadata[[parameter_name]] = value_collection
               value_collection = c()
             }
-          } else if(in_process_closure && in_module_closure && !("{" %in% clean_line & "}" %in% clean_line) && (clean_line[1] == "}"  || grepl("\\}$",clean_line[length(clean_line)]))){
+          } else if(in_process_closure && in_module_closure && !(sum("{" %in% clean_line) > 0 & sum("}" %in% clean_line) >0 ) && (clean_line[1] == "}"  || sum(grepl("\\}$",clean_line[length(clean_line)]) > 0))){
             in_module_closure = FALSE
             modulesMetadata[[module_name]][[condition_for_config]] = moduleMetadata
             rlog::log_info(paste("Updating info for module:",module_name,"condition:",condition_for_config))
@@ -945,7 +945,7 @@ loadModuleMetadata <- function(config_files){
                 }
               }
             }
-          } else if(in_process_closure && !in_module_closure && (clean_line[1] == "}" || grepl("\\}$",clean_line) )){
+          } else if(in_process_closure && !in_module_closure && (clean_line[1] == "}" || sum(grepl("\\}$",clean_line[1]))>0 )){
             in_process_closure = FALSE
             rlog::log_info(paste("Exiting process closure"))
           } else if(!in_process_closure && !in_module_closure && in_expression){
