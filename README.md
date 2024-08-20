@@ -180,6 +180,11 @@ For a more interactive method of crafting both CLI and API templates, here is a 
 
 See [here](https://keneng87.pyscriptapps.com/ica-analysis-requeue/latest/) to interact with it live.
 
+# ica_analysis_troubleshooting_app
+For an interactive method of downloading analysis logs and metadata for troubleshooting an ICA analysis, here is a pyscript-based web app that allows a user to grab logs and start troubleshooting analyses on Illumina Connected Analytics (ICA)
+
+See [here](https://keneng87.pyscriptapps.com/ica-analysis-troubleshooting-app/latest/) to interact with it live.
+
 # Creating your	own tests/pipeline runs	via the	CLI
 Where possible, these scripts search for config files that refer to a test (i.e. test.config,test_full.config,test*config) and creates a boolean parameter ```params.ica_smoke_test```
 that can be toggled on/off as a sanity check that the pipeline works as intended. By default, this parameter is set to ```false```.
