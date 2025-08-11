@@ -35,8 +35,13 @@ COPY *.exp ${SCRIPT_DIR}/
 ### install nf-core python module and nextflow
 RUN apt-get update -y && \
     apt-get install -y openjdk-11-jdk
+
+ENV NF_VERSION  "22.04.3"
 RUN cd ${SCRIPT_DIR} && \
-    curl -s https://get.nextflow.io | bash
+    wget "https://github.com/nextflow-io/nextflow/releases/download/v${NF_VERSION}/nextflow"
+##    curl -s https://get.sdkman.io | bash 
+## RUN sdk install java 17.0.10-tem && \
+##    curl -s https://get.nextflow.io | bash
 ##############################################
 ENV NFCORE_TOOLS_VERSION "2.7.2"
 ###### install nf-core in a virtual env and generate pipeline.JSON file to be used by scripts later.
@@ -45,10 +50,10 @@ RUN wget --no-check-certificate "https://github.com/nf-core/tools/archive/refs/t
     unzip ${NFCORE_TOOLS_VERSION}.zip && \
     rm ${NFCORE_TOOLS_VERSION}.zip
 
-RUN apt-get install -y python3.11-venv && \
-    python3 -m venv /usr/local/bin/myvirt && \
-    /usr/local/bin/myvirt/bin/pip3 install nf-core
-ENV PATH $PATH:/usr/local/bin/myvirt/bin:${SCRIPT_DIR}:${SCRIPT_DIR}/linux-amd64
+#RUN apt-get install -y python3.11-venv && \
+#    python3 -m venv /usr/local/bin/myvirt && \
+#    /usr/local/bin/myvirt/bin/pip3 install nf-core
+##ENV PATH $PATH:/usr/local/bin/myvirt/bin:${SCRIPT_DIR}:${SCRIPT_DIR}/linux-amd64
 COPY *.txt ${SCRIPT_DIR}/
 COPY *.config ${SCRIPT_DIR}/
 WORKDIR /scripts

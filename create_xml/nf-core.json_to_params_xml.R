@@ -114,19 +114,19 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
       rlog::log_info(paste("Checking for required parameters"))
       param_names = NULL
       if("required" %in% names(param_data[[parameter_sections[i]]])){
-        param_names = param_data[[parameter_sections[i]]][["required"]]
+        if(length(param_data[[parameter_sections[i]]][["required"]]) > 0){
+          param_names = param_data[[parameter_sections[i]]][["required"]]
+        }
       } 
       if("title" %in% names(param_data[[parameter_sections[i]]])){
         if(grepl("require",param_data[[parameter_sections[i]]][["title"]],ignore.case=T)){
           param_names = names(param_data[[parameter_sections[i]]][["properties"]])
         }
-      } 
-      if("description" %in% names(param_data[[parameter_sections[i]]])){
+      } else if("description" %in% names(param_data[[parameter_sections[i]]])){
         if(grepl("require",param_data[[parameter_sections[i]]][["description"]],ignore.case=T)){
           param_names = names(param_data[[parameter_sections[i]]][["properties"]])
         }
-      } 
-      if(grepl("require",param_data[[parameter_sections[i]]],ignore.case=T)){
+      } else if(grepl("require",param_data[[parameter_sections[i]]],ignore.case=T)){
         param_names = names(param_data[[parameter_sections[i]]][["properties"]])
       }
     }
