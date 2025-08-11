@@ -112,10 +112,22 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
     rlog::log_info(paste("Found", paste(param_names,collapse=", ")))
     if(!isTRUE(include_hidden_parameters) && !(parameter_sections[i] %in% override_list)){
       rlog::log_info(paste("Checking for required parameters"))
+      param_names = NULL
       if("required" %in% names(param_data[[parameter_sections[i]]])){
         param_names = param_data[[parameter_sections[i]]][["required"]]
-      } else{
-        param_names = NULL
+      } 
+      if("title" %in% names(param_data[[parameter_sections[i]]])){
+        if(grepl("require",param_data[[parameter_sections[i]]][["title"]],ignore.case=T)){
+          param_names = names(param_data[[parameter_sections[i]]][["properties"]])
+        }
+      } 
+      if("description" %in% names(param_data[[parameter_sections[i]]])){
+        if(grepl("require",param_data[[parameter_sections[i]]][["description"]],ignore.case=T)){
+          param_names = names(param_data[[parameter_sections[i]]][["properties"]])
+        }
+      } 
+      if(grepl("require",param_data[[parameter_sections[i]]],ignore.case=T)){
+        param_names = names(param_data[[parameter_sections[i]]][["properties"]])
       }
     }
     if(!is.null(param_names)){
@@ -125,10 +137,14 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
         #print(returnParamMetadata(generic_data[[param_names[j]]]))
         allParams[[param_names[j]]] = returnParamMetadata(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]])
       }
+    } else{
+       rlog::log_info(paste("Did not find required parameters to parse in ",parameter_sections[i],"section"))
     }
     # avoid adding empty lists to our config
     if(length(allParams) > 0){
       parameterConfigs[[parameter_sections[i]]] = allParams  
+    } else{
+      stop(rlog::log_info(paste("Could not find required parameter names")))
     }
   }
   ### 1st attempt to include parameters from NF pipelines not in nf-core
