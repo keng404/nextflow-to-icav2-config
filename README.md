@@ -3,6 +3,8 @@ This is an unofficial developer tool to help develop Nextflow pipelines that wil
 
 This is not an official Illumina product, but is intended to make your Nextflow experience in ICA more fruitful.
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/keng404/nextflow-to-icav2-config)
+
 Some examples of Nextflow pipelines that have been lifted over with this repo can be found [here](https://github.com/keng404/ica_nextflow_demos_v2).
 
 Some additional examples of ICA-ported Nextflow pipelines are [here](https://github.com/keng404/ica_nextflow_demos). 
