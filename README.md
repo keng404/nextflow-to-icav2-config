@@ -15,7 +15,6 @@ Some additional repos that can help with your ICA experience can be found below:
   - Wrap a WDL-based workflow in a [CWL wrapper](https://github.com/keng404/wdl_test)
   - Wrap a Nextflow-based workflow in a [CWL wrapper](https://github.com/keng404/nextflow_test)
 
-
 ## Local testing your Nextflow pipeline after using these scripts
 This [naive wrapper](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/test_nextflow_script.R) will allow you to test your main.nf script. If you have a Nextflow pipeline that is more nf-core like (i.e. where you may have several subworkflow and module files), this [script](https://github.com/keng404/nextflow-to-icav2-config/blob/main/testing_pipelines/nextflow_extended_local_testing.R) may be more appropriate. Any and all comments are welcome.
 
@@ -114,6 +113,19 @@ In summary, you will need the following prerequisites, either to run the wrapper
 - 1) ```git clone``` nf-core pipelines of interest
 - 2) Install the python module ```nf-core``` and create a JSON file using the command line ```nf-core list --json > {PIPELINE_JSON_FILE}```
 
+## For those interested in creating pipelines in ICA using [JSON input forms](https://help.ica.illumina.com/project/p-flow/f-pipelines/json-based-input-forms)
+1) If you have a parameters.xml file from a previous liftover, the script ```create_json_input_forms.R``` will help generate the input JSON form for an ICA pipeline
+```bash
+Rscript create_json_input_forms.R --parameters-xml  {PATH_TO_PARAMETERS_XML_FILE}
+```
+2) If you have a ```nextflow_schema.json``` file,  the script ```create_json_input_forms.R``` will help generate the input JSON form for an ICA pipeline
+```bash
+ Rscript nf-core_schema_json_to_json_ica_input_form.R --json {PATH_TO_NF_SCHEMA_JSON}
+ ```
+3) To create a pipeline in ICA with a  input JSON form, you can use the script ```nf-core.create_ica_pipeline_with_json_input_form.R ```
+```bash
+Rscript nf-core.create_ica_pipeline_with_json_input_form.R --nextflow-script {NF_SCRIPT} --workflow-language nextflow --json-input-form {JSON_INPUT_FORM} --nf-core-mode --ica-project-name {NAME} --pipeline-name {NAME} --api-key-file {PATH_TO_API_KEY_FILE}
+```
 
 # A detailed step-by-step breakdown of what ```nf-core.conversion_wrapper.R``` does for each Nextflow pipeline
 

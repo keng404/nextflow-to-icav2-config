@@ -132,14 +132,17 @@ getParams <- function(param_data,include_hidden_parameters=args$include_hidden_p
     }
     if(!is.null(param_names)){
       for(j in 1:length(param_names)){
-        #print(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]])
+        ##cat(paste(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]]))
         rlog::log_info(paste("Retriving info for parameter",param_names[j]))
         #print(returnParamMetadata(generic_data[[param_names[j]]]))
-        allParams[[param_names[j]]] = returnParamMetadata(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]])
+        param_metadata = returnParamMetadata(param_data[[parameter_sections[i]]][["properties"]][[param_names[j]]])
+        ##cat(paste("PARAM_METADATA:",param_metadata))
+        allParams[[param_names[j]]] = param_metadata
       }
     } else{
        rlog::log_info(paste("Did not find required parameters to parse in ",parameter_sections[i],"section"))
     }
+    print(names(allParams))
     # avoid adding empty lists to our config
     if(length(allParams) > 0){
       parameterConfigs[[parameter_sections[i]]] = allParams  
@@ -218,7 +221,7 @@ convertParams <- function(parsed_json){
   allParams[["steps"]] = steps
   return(allParams)
 }
-rlog::log_info(paste("STEP2: Converting JSON to be ready for ICA XML"))
+rlog::log_info(paste("STEP2: Converting JSON to be ready for ICA JSON input form"))
 #print(x)
 y = convertParams(x)
 #print(y)
@@ -230,124 +233,176 @@ if(args$nf_core_mode){
     data_input_configurations[["input_files"]][["description"]] = 'input files for pipeline.\nAll files will be staged in workflow.launchDir'
   }
 }
+
+cat(paste("DATA_INPUT_CONFIGURATIONS:",data_input_configurations,"\n"))
 #####################
 step_configurations = y[["steps"]]
-
-# XML STRING 
-prefix.xml <- "
-<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
-"
+cat(paste("STEP_CONFIGURATIONS:",step_configurations,"\n"))
+#stop(paste("STOPPING_NOW!\n"))
 
 
-# BUILD XML TREE
-#doc = xmlTreeParse(prefix.xml,useInternalNodes = T)     # PARSE STRING
-rlog::log_info(paste("STEP3:Generating ICA XML based off of",nf_params_json))
-doc = newXMLDoc()
-#xmlAttrs(doc) = c(encoding="UTF-8",standalone="yes")
-#root = xmlRoot(doc)                                      # FIND ROOT
-#pipeline_node = newXMLNode("pipeline",parent=root)
-root = newXMLNode("pipeline",doc=doc)
-xmlAttrs(root) = c(code=paste(basename(dirname(nf_params_json)),"pipeline"),version="1.0",xmlns="xsd://www.illumina.com/ica/cp/pipelinedefinition")
-# add data inputs
-# create new sections for steps
-## then add options for each section
-############
-#code="left" format="FASTQ" type="FILE" required="true" multiValue="false"
-#<pd:dataInput code="ref" format="FASTA" type="FILE" required="true" multiValue="false">
-#  <pd:label>ref</pd:label>
-#  <pd:description>the value for File transcriptome</pd:description>
-#  </pd:dataInput>
-############
+convert_json_import_form_types <- function(info_type){
+  type_returned = info_type
+  if(info_type == "booleanType"){
+    type_returned = "CHECKBOX"
+  } else if(info_type == "stringType"){
+    type_returned = "TEXTBOX"
+  } else if(info_type == "doubleType"){
+    type_returned = "NUMBER"
+  } else if(info_type == "integerType"){
+    type_returned = "INTEGER"
+  } else if(info_type == "optionsType"){
+    type_returned = "SELECT"
+  } 
+  return(type_returned)
+}
+
+
+create_json_template <- function(data_input_list,parameter_list,file_output){
+  template_list = list()
+  empty_data_inputs = FALSE
+  empty_parameter_list = FALSE
+  if(length(names(parameter_list)) < 1){
+    rlog::log_warn(paste("Could not find any parameters for template"))
+    empty_parameter_list = TRUE
+  }
+  if(length(names(data_input_list)) < 1){
+    rlog::log_warn(paste("Could not find any data inputs for template"))
+    empty_data_inputs = TRUE
+  }
+  template_list[["field-data"]] = data_input_list
+  template_list[["field"]] = parameter_list
+  if(!empty_parameter_list | !empty_data_inputs){
+    template_JSON = jsonlite::toJSON(template_list)
+    rlog::log_info(paste("Writing template to",file_output))
+    jsonlite::write_json(template_list,path=file_output,pretty=T,auto_unbox=T)
+    return(TRUE)
+  } else{
+    rlog::log_warn(paste("Did not generate template. No parameters or inputs found"))
+    rlog::log_warn(paste("EMPTY_DATA_INPUTS:",empty_data_inputs,"EMPTY_PARAMETER_LIST:",empty_parameter_list))
+    return(FALSE)
+  }
+  
+}
+
+
+# BUILD input form
+rlog::log_info(paste("STEP3:Generating ICA JSON FORM based off of",nf_params_json))
+input_form = list()
 #############################
 #### add data inputs
 rlog::log_info(paste("STEP3a: Adding dataInputs"))
-dataInputsNode = newXMLNode("dataInputs",parent=root)
+data_input_list_collection = list()
 if(length(data_input_configurations) >0){
+  section_list = list()
+  section_list[["id"]] = "section_datainputs"
+  section_list[["type"]] = "SECTION"
+  section_list[["label"]] = "Section for selecting data inputs"
+  data_input_list_collection[[1]] = section_list
   for(i in 1:length(names(data_input_configurations))){
-    dataInputNode = newXMLNode("dataInput",parent=dataInputsNode)
+    input_name = names(data_input_configurations)[i]
+    input_list = list()
+    input_list[["type"]] = "DATA"
+    input_list[["id"]] = input_name
+    input_list_required = "true"
+    input_list[["label"]] =   data_input_configurations[[input_name]][["label"]]
+    input_list_multi_value = "true"
+    input_list[["minValues"]] = 0
+    input_list[["maxValues"]] = 999
     if(grepl("folder",data_input_configurations[[names(data_input_configurations)[i]]][["description"]],ignore.case=T)){
-      xmlAttrs(dataInputNode) = c(code = names(data_input_configurations)[i] ,format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")   
-  } else{
-      if(names(data_input_configurations)[i]  == "input_files" && data_input_configurations[[names(data_input_configurations)[i]]][["description"]] == 'input files for pipeline.\nAll files will be staged in workflow.launchDir'){
-        xmlAttrs(dataInputNode) = c(code = names(data_input_configurations)[i] ,format = "UNKNOWN",type = "FILE",required = "false",multiValue = "true")   
+      input_list[["dataFilter"]] = list()
+      input_list[["dataFilter"]][["dataType"]] = list()
+      input_list[["dataFilter"]][["dataType"]][["enum"]] = list("directory")
       } else{
-        xmlAttrs(dataInputNode) = c(code = names(data_input_configurations)[i] ,format = "UNKNOWN",type = "FILE",required = "true",multiValue = "true")   
+      if(names(data_input_configurations)[i]  == "input_files" && data_input_configurations[[names(data_input_configurations)[i]]][["description"]] == 'input files for pipeline.\nAll files will be staged in workflow.launchDir'){
+        input_list_required = "false" 
+        input_list[["dataFilter"]] = list()
+        input_list[["dataFilter"]][["dataType"]] = list()
+        input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
+      } else{
+        input_list_required = "true"
+        input_list[["dataFilter"]] = list()
+        input_list[["dataFilter"]][["dataType"]] = list()
+        input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
       }
     }
-    newXMLNode("label", names(data_input_configurations)[i], parent=dataInputNode)
     data_input_configurations[[names(data_input_configurations)[i]]][["description"]] = gsub("\n$","",data_input_configurations[[names(data_input_configurations)[i]]][["description"]])
-    newXMLNode("description", data_input_configurations[[names(data_input_configurations)[i]]][["description"]], parent=dataInputNode)
+    input_list[["helpText"]] =  data_input_configurations[[input_name]][["description"]]
+    data_input_list_collection[[i+1]] = input_list
   }
 } else{
   rlog::log_warn(paste("STEP3a: No dataInputs found"))
 }
 ############## add parameter options
-## <pd:step execution="MANDATORY" code="General">
-#<pd:label>General</pd:label>
-#  <pd:description>General parameters</pd:description>
-#  <pd:tool code="generalparameters">
-#  <pd:label>generalparameters</pd:label>
-#  <pd:description>General Parameters</pd:description>
-
-#code="threads" minValues="1" maxValues="1" classification="USER"
-#
-#                <pd:parameter code="threads" minValues="1" maxValues="1" classification="USER">
-#                    <pd:label>threads</pd:label>
-#                    <pd:description>the value for threads</pd:description>
-#                    <pd:integerType/>
-#                    <pd:value>8</pd:value>
-#                </pd:parameter>
-############  
 ########################
 rlog::log_info(paste("STEP3b: Adding parameter options"))
-stepsNode = newXMLNode("steps",parent=root)
+parameter_list_collection = list()
 if(length(step_configurations)>0){
   for(i in 1:length(names(step_configurations))){
-    initial_step_node = newXMLNode("step",parent=stepsNode)
-    xmlAttrs(initial_step_node) = c(execution = "MANDATORY",code = names(step_configurations)[i])    
-    step_label_node  = newXMLNode("label",names(step_configurations)[i],parent=initial_step_node)
-    description_label_node  = newXMLNode("description",paste(names(step_configurations)[i],"parameters"),parent=initial_step_node)
-    tool_description_node = newXMLNode("tool",parent=initial_step_node)
-    xmlAttrs(tool_description_node) = c(code=paste(names(step_configurations)[i],"parameters"))
-    nested_step_label_node  = newXMLNode("label",names(step_configurations)[i],parent=tool_description_node)
-    nested_description_label_node  = newXMLNode("description",paste(names(step_configurations)[i],"parameters"),parent=tool_description_node)
+    section_list = list()
+    section_list[["id"]] = paste(names(step_configurations)[i],"section parameters")
+    section_list[["type"]] = "SECTION"
+    section_list[["label"]] = paste(names(step_configurations)[i],"parameters")
+    section_list[["helpText"]] = paste(names(step_configurations)[i],"parameters")
+    parameter_list_collection[[i]] = section_list
     parameter_names = names(step_configurations[[names(step_configurations)[i]]])
     for(j in 1:length(parameter_names)){
       parameter_metadata = step_configurations[[names(step_configurations[i])]][[parameter_names[j]]]
-      nested_parameter_node = newXMLNode("parameter",parent=tool_description_node)
+     # nested_parameter_node = newXMLNode("parameter",parent=tool_description_node)
       parameter_name = names(step_configurations[[names(step_configurations)[i]]])[j]
-      xmlAttrs(nested_parameter_node) = c(code = parameter_name,minValues = "1",maxValues="1",classification="USER")
-      newXMLNode("label",parameter_names[j],parent=nested_parameter_node)
+      ####################
+      field_list = list()
+      field_list[["id"]] = parameter_name
+      field_list[["helpText"]] = parameter_metadata[["description"]]
+      field_list[["label"]] = parameter_name
+      field_list_multi_value = "false"
+      field_list[["minValues"]] = 0
+      field_list[["maxValues"]] = 1
+      field_list_default_value = c()
+      field_list[["values"]] = list(field_list_default_value)
+      #############################################################
+      #xmlAttrs(nested_parameter_node) = c(code = parameter_name,minValues = "1",maxValues="1",classification="USER")
+      #newXMLNode("label",parameter_names[j],parent=nested_parameter_node)
+      #########################
       parameter_metadata[["description"]] = gsub("\n$","",parameter_metadata[["description"]])
-      newXMLNode("description",parameter_metadata[["description"]],parent=nested_parameter_node)
+      field_list[["helpText"]] =  parameter_metadata[["description"]]
       #### adding options if a list of values are provided
       default_override = FALSE
       if("list" %in% names(parameter_metadata)){
         list_vals = parameter_metadata[["list"]]
         apply_integer_workaround = apply(t(list_vals),2,strtoi)
         if(sum(is.na(apply_integer_workaround)) == 0 ){
-          newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
-          newXMLNode("value",list_vals[1],parent=nested_parameter_node)
+          #newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
+          field_list[["type"]] = "INTEGER"
+          field_list_default_value = list_vals[1]
+          field_list[["values"]] = list(field_list_default_value)
           default_override = TRUE
         } else{
         if(length(list_vals) > 0){
-            options_node = newXMLNode(paste("optionsType"),parent=nested_parameter_node)
+            #options_node = newXMLNode(paste("optionsType"),parent=nested_parameter_node)
+            field_list[["type"]] = "SELECT"
+            choices = c()
             for(lv in 1:length(list_vals)){
-              newXMLNode("option",list_vals[lv],parent=options_node)
+              #newXMLNode("option",list_vals[lv],parent=options_node)
+              choices = c(choices,list_vals[lv])
             }
-          }
-          newXMLNode("value",list_vals[1],parent=nested_parameter_node)
+            field_list[["choices"]] = choices
+        }
+          ##newXMLNode("value",list_vals[1],parent=nested_parameter_node)
+          field_list_default_value = list_vals[1]
+          field_list[["values"]] = list(field_list_default_value)
           default_override = TRUE
         }
       } else{
         if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
           if(is.na(as.numeric(parameter_metadata[["default"]]))){
-          newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
+          ###newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
+            field_list[["type"]] = "INTEGER"
           } else{
-            newXMLNode(paste("float","Type",sep=""),parent=nested_parameter_node)
+            field_list[["type"]] = "NUMBER"
           }
         } else{
-          newXMLNode(paste(paste(parameter_metadata[["type"]],"Type",sep=""),sep=""),parent=nested_parameter_node)
+          field_list[["type"]] = convert_json_import_form_types(paste(parameter_metadata[["type"]],"Type",sep=""))
         }
       }
       if("default" %in% names(parameter_metadata)){
@@ -370,10 +425,12 @@ if(length(step_configurations)>0){
           } else{
             dummy_value = ""
           }
-          parameter_metadata[["default"]] = dummy_value
+          field_list_default_value = dummy_value
+          field_list[["values"]] = list(field_list_default_value)
         }
         if(!default_override){
-          newXMLNode("value",parameter_metadata[["default"]],parent=nested_parameter_node)
+          field_list_default_value = dummy_value
+          field_list[["values"]] = list(field_list_default_value)
         }
       } else{
         dummy_value = ""
@@ -385,9 +442,14 @@ if(length(step_configurations)>0){
           dummy_value = ""
         }
         if(!default_override){
-          newXMLNode("value",dummy_value,parent=nested_parameter_node)
+          field_list_default_value = dummy_value
+          field_list[["values"]] = list(field_list_default_value)
         }
       }
+    if(length(field_list_default_value) > 1){
+      field_list[["maxValues"]] = 999
+    }
+    parameter_list_collection[[j + i]] = field_list
     }
   }
 } else{
@@ -397,12 +459,46 @@ if(length(step_configurations)>0){
 #print(doc)
 
 # SAVE XML TO FILE
-outputFile = paste(basename(dirname(nf_params_json)), "pipeline","xml",sep=".")
+outputFile = paste(basename(dirname(nf_params_json)), "ica_input_form","json",sep=".")
 if(!is.null(args$output)){
   outputPath = args$output
 } else{
   outputPath = paste(dirname(nf_params_json),"/",outputFile,sep="")
 }
-rlog::log_info(paste("STEP4: Generating parameters XML to",outputPath))
+rlog::log_info(paste("STEP4: Generating ICA JSON input form to",outputPath))
 #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-saveXML(doc, file=outputPath,encoding="utf-8")
+#saveXML(doc, file=outputPath,encoding="utf-8")
+if(length(parameter_list_collection) > 0 & length(data_input_list_collection) > 0){
+  full_collection = c(data_input_list_collection,parameter_list_collection)
+} else if(length(parameter_list_collection) > 0 & length(data_input_list_collection) == 0){
+  full_collection = parameter_list_collection
+} else if(length(parameter_list_collection) == 0 & length(data_input_list_collection) > 0){
+  full_collection = data_input_list_collection
+} else{
+  rlog::log_warn(paste("Did not generate template. No parameters and inputs found"))
+  rlog::log_warn(paste("EMPTY_DATA_INPUTS:",length(data_input_list_collection),"EMPTY_PARAMETER_LIST:",length(parameter_list_collection)))
+  return(FALSE)
+}
+for(idx in 1:length(full_collection)){
+  print(paste("IDX:",idx,"VAL:",full_collection[idx]))
+  input_form[[idx]] = full_collection[[idx]]
+}
+
+####### ICA input JSON FORM
+input_form_final_list = list()
+input_form_final_list[["fields"]] = input_form
+input_form_JSON = jsonlite::toJSON(input_form_final_list,pretty=TRUE,auto_unbox=TRUE,flatten = TRUE)
+rlog::log_info(paste("Writing input form JSON to",outputPath))
+write(input_form_JSON,file=outputPath)
+
+
+###### create TEMPLATE JSON for ICA CLI generation
+file_output = paste(basename(dirname(nf_params_json)), "pipeline.cli_template","json",sep=".")
+if(!is.null(args$output)){
+  file_output = args$output
+} else{
+  file_output = paste(dirname(nf_params_json),"/",file_output,sep="")
+}
+create_json_template(data_input_configurations,step_configurations,file_output)
+
+

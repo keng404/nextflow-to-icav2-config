@@ -11,7 +11,8 @@ parser <- ArgumentParser()
 
 # specify our desired options 
 # by default ArgumentParser will add an help option 
-
+parser$add_argument("-j", "--json-input-form","--json_input_form", default=NULL,
+                    help="JSON input form for a pipeline")
 parser$add_argument("-s", "--nextflow-script","--nextflow_script", default=NULL,
                     help="Main nf script for a pipeline")
 parser$add_argument("-y", "--nextflow-config","--nextflow_config", default=NULL,
@@ -58,6 +59,7 @@ api_key_file = args$api_key_file
 api_key = read.delim(api_key_file,quote="",header=F)[,1]
 nextflow_version = args$nextflow_version
 nextflow_config = args$nextflow_config
+json_input_form = args$json_input_form
 ## main script
 ## xml
 xml_file = args$parameters_xml
@@ -326,7 +328,7 @@ rename_pipeline_name <- function(pipeline_name,api_key){
 ###########################3
 pipeline_name = rename_pipeline_name(pipeline_name,api_key)
 pipeline_creation_request[["code"]] = pipeline_name
-pipeline_creation_request[["parametersXmlFile"]] = xml_file
+pipeline_creation_request[["inputFormFile"]] = json_input_form
 if(workflow_language == "nextflow"){
   pipeline_creation_request[["mainNextflowFile"]] = main_script
 } else if(workflow_language == "cwl"){
@@ -466,9 +468,9 @@ if(args$developer_mode){
   }
 }
 # return result to check if we're good
-pipeline_creation_url = paste(paste("https://",args$base_ica_url,"/ica/rest/api/projects/",sep=""),ica_project_id,"/pipelines:createNextflowPipeline",sep="")
+pipeline_creation_url = paste(paste("https://",args$base_ica_url,"/ica/rest/api/projects/",sep=""),ica_project_id,"/pipelines:createNextflowJsonPipeline",sep="")
 if(workflow_language == "cwl"){
-  pipeline_creation_url = paste(paste("https://",args$base_ica_url,"/ica/rest/api/projects/",sep=""),ica_project_id,"/pipelines:createCwlPipeline",sep="")
+  pipeline_creation_url = paste(paste("https://",args$base_ica_url,"/ica/rest/api/projects/",sep=""),ica_project_id,"/pipelines:createCwlJsonPipeline",sep="")
 }
 
 system(paste("icav2 analysisstorages list -o json","-s",args$base_ica_url,"-k",paste("'",api_key,"'",sep=""),"> storages.json"))
@@ -514,7 +516,7 @@ if(is.null(storage_id)){
 #-F 'description=adsfassadf'
 #############
 parsePipelineDescription <- function(pipeline_description,api_key){
-  known_versions = c('20.10.0','22.04.3','24.10.2')  
+  known_versions = c('20.10.0','22.04.3',"24.10.2")  
   final_version_id = NULL
   final_version = NULL
   pipeline_language_version_url =paste("https://",args$base_ica_url,"/ica/rest/api/pipelineLanguages/nextflow/versions",sep="")
@@ -589,9 +591,9 @@ if(!is.null(final_nextflow_version)){
 ###### ATTEMPT ____ MANUALLY CREATE ACTUAL CURL COMMAND TO ICA API rest server to  create pipeline
 create_curl_command <- function(url,request){
   curl_command = paste("curl --verbose -vL -X 'POST'",url)
-  files_sections = c("otherNextflowFiles","toolCwlFiles","nextflowConfigFile","mainNextflowFile","parametersXmlFile","workflowCwlFile")
+  files_sections = c("otherNextflowFiles","toolCwlFiles","nextflowConfigFile","mainNextflowFile","inputFormFile","workflowCwlFile")
   #adding headers
-  curl_command = paste(curl_command,"-H 'accept: application/vnd.illumina.v3+json'")
+  curl_command = paste(curl_command,"-H 'accept: application/vnd.illumina.v4+json'")
   curl_command = paste(curl_command,"-H 'X-API-Key:",paste(api_key,"'",sep=""))
   curl_command = paste(curl_command,"-H 'Content-Type: multipart/form-data'")
   for(i in 1:length(names(request))){
@@ -621,8 +623,8 @@ create_curl_command <- function(url,request){
       } else if(names(request)[i] == "nextflowConfigFile"){
         string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],"'",sep=""))
         curl_command = paste(curl_command,string_to_add)
-        } else if(names(request)[i] == "parametersXmlFile"){
-        string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],";type=text/xml'",sep=""))
+        } else if(names(request)[i] == "inputFormFile"){
+        string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],";type=text/json'",sep=""))
         curl_command = paste(curl_command,string_to_add)
       } else if(names(request)[i] == "mainNextflowFile" || names(request)[i] == "workflowCwlFile"){
         string_to_add = paste("-F",paste("'",names(request)[i],"=@",request[[names(request)[i]]],"'",sep=""))

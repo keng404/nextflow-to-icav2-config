@@ -1,10 +1,9 @@
-*json
-*/*json
+*.json
+*/*.json
 *~
 */*~
 *sh
 */*sh
-*json*
 *csv
 *log
 *tsv
