@@ -244,15 +244,15 @@ cat(paste("STEP_CONFIGURATIONS:",step_configurations,"\n"))
 convert_json_import_form_types <- function(info_type){
   type_returned = info_type
   if(info_type == "booleanType"){
-    type_returned = "CHECKBOX"
+    type_returned = "checkbox"
   } else if(info_type == "stringType"){
-    type_returned = "TEXTBOX"
+    type_returned = "textbox"
   } else if(info_type == "doubleType"){
-    type_returned = "NUMBER"
+    type_returned = "number"
   } else if(info_type == "integerType"){
-    type_returned = "INTEGER"
+    type_returned = "integer"
   } else if(info_type == "optionsType"){
-    type_returned = "SELECT"
+    type_returned = "select"
   } 
   return(type_returned)
 }
@@ -296,13 +296,13 @@ data_input_list_collection = list()
 if(length(data_input_configurations) >0){
   section_list = list()
   section_list[["id"]] = "section_datainputs"
-  section_list[["type"]] = "SECTION"
+  section_list[["type"]] = "section"
   section_list[["label"]] = "Section for selecting data inputs"
   data_input_list_collection[[1]] = section_list
   for(i in 1:length(names(data_input_configurations))){
     input_name = names(data_input_configurations)[i]
     input_list = list()
-    input_list[["type"]] = "DATA"
+    input_list[["type"]] = "data"
     input_list[["id"]] = input_name
     input_list_required = "true"
     input_list[["label"]] =   data_input_configurations[[input_name]][["label"]]
@@ -311,19 +311,22 @@ if(length(data_input_configurations) >0){
     input_list[["maxValues"]] = 999
     if(grepl("folder",data_input_configurations[[names(data_input_configurations)[i]]][["description"]],ignore.case=T)){
       input_list[["dataFilter"]] = list()
-      input_list[["dataFilter"]][["dataType"]] = list()
-      input_list[["dataFilter"]][["dataType"]][["enum"]] = list("directory")
+      ##input_list[["dataFilter"]][["dataType"]] = list()
+      input_list[["dataFilter"]][["dataType"]] = "directory"
+      ##input_list[["dataFilter"]][["dataType"]][["enum"]] = list("directory")
       } else{
       if(names(data_input_configurations)[i]  == "input_files" && data_input_configurations[[names(data_input_configurations)[i]]][["description"]] == 'input files for pipeline.\nAll files will be staged in workflow.launchDir'){
         input_list_required = "false" 
         input_list[["dataFilter"]] = list()
-        input_list[["dataFilter"]][["dataType"]] = list()
-        input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
+        ##input_list[["dataFilter"]][["dataType"]] = list()
+        input_list[["dataFilter"]][["dataType"]] = "file"
+        ###input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
       } else{
         input_list_required = "true"
         input_list[["dataFilter"]] = list()
-        input_list[["dataFilter"]][["dataType"]] = list()
-        input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
+        ###input_list[["dataFilter"]][["dataType"]] = list()
+        input_list[["dataFilter"]][["dataType"]] = "file"
+        ##input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
       }
     }
     data_input_configurations[[names(data_input_configurations)[i]]][["description"]] = gsub("\n$","",data_input_configurations[[names(data_input_configurations)[i]]][["description"]])
@@ -341,7 +344,7 @@ if(length(step_configurations)>0){
   for(i in 1:length(names(step_configurations))){
     section_list = list()
     section_list[["id"]] = paste(names(step_configurations)[i],"section parameters")
-    section_list[["type"]] = "SECTION"
+    section_list[["type"]] = "section"
     section_list[["label"]] = paste(names(step_configurations)[i],"parameters")
     section_list[["helpText"]] = paste(names(step_configurations)[i],"parameters")
     parameter_list_collection[[i]] = section_list
@@ -359,7 +362,7 @@ if(length(step_configurations)>0){
       field_list[["minValues"]] = 0
       field_list[["maxValues"]] = 1
       field_list_default_value = c()
-      field_list[["values"]] = list(field_list_default_value)
+      field_list[["value"]] = field_list_default_value
       #############################################################
       #xmlAttrs(nested_parameter_node) = c(code = parameter_name,minValues = "1",maxValues="1",classification="USER")
       #newXMLNode("label",parameter_names[j],parent=nested_parameter_node)
@@ -373,33 +376,45 @@ if(length(step_configurations)>0){
         apply_integer_workaround = apply(t(list_vals),2,strtoi)
         if(sum(is.na(apply_integer_workaround)) == 0 ){
           #newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
-          field_list[["type"]] = "INTEGER"
+          field_list[["type"]] = "integer"
           field_list_default_value = list_vals[1]
-          field_list[["values"]] = list(field_list_default_value)
+          field_list[["value"]] = field_list_default_value
           default_override = TRUE
         } else{
         if(length(list_vals) > 0){
             #options_node = newXMLNode(paste("optionsType"),parent=nested_parameter_node)
-            field_list[["type"]] = "SELECT"
+            field_list[["type"]] = "select"
             choices = c()
             for(lv in 1:length(list_vals)){
               #newXMLNode("option",list_vals[lv],parent=options_node)
               choices = c(choices,list_vals[lv])
             }
-            field_list[["choices"]] = choices
+            choices_list = list()
+            options_to_pick = list_vals
+            for(o_idx in 1:length(options_to_pick)){
+              option_list = list()
+              option_list[["text"]] = options_to_pick[o_idx]
+              option_list[["value"]] = options_to_pick[o_idx]
+              if(o_idx == 1){
+                option_list[["selected"]] = as.logical("true")
+              }
+              choices_list[[o_idx]] = option_list
+            }
+            field_list[["choices"]] = choices_list
+            #field_list[["choices"]] = choices
         }
           ##newXMLNode("value",list_vals[1],parent=nested_parameter_node)
           field_list_default_value = list_vals[1]
-          field_list[["values"]] = list(field_list_default_value)
+          field_list[["value"]] = field_list_default_value
           default_override = TRUE
         }
       } else{
         if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
           if(is.na(as.numeric(parameter_metadata[["default"]]))){
           ###newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
-            field_list[["type"]] = "INTEGER"
+            field_list[["type"]] = "integer"
           } else{
-            field_list[["type"]] = "NUMBER"
+            field_list[["type"]] = "number"
           }
         } else{
           field_list[["type"]] = convert_json_import_form_types(paste(parameter_metadata[["type"]],"Type",sep=""))
@@ -407,43 +422,53 @@ if(length(step_configurations)>0){
       }
       if("default" %in% names(parameter_metadata)){
         if(parameter_name != "outdir"){
-          dummy_value = ""
+          dummy_value = "STRING"
         } else{
           dummy_value = "out"
         }
         if(parameter_metadata[["default"]] != ""){
           if(parameter_metadata[["default"]] == FALSE & parameter_metadata[["default"]] != 0){
-            parameter_metadata[["default"]] = "false"
+            parameter_metadata[["default"]] = as.logical("false")
           } else if(parameter_metadata[["default"]] == TRUE & parameter_metadata[["default"]] != 1){
-            parameter_metadata[["default"]] = "true"
+            parameter_metadata[["default"]] = as.logical("true")
           }
         } else{
           if(parameter_metadata[["type"]] == "boolean"){
-            dummy_value = "false"
-          } else if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
+            dummy_value = as.logical("false")
+          } else if(grepl("number",parameter_metadata[["type"]],ignore.case = T) | grepl("integer",parameter_metadata[["type"]],ignore.case = T)){
             dummy_value = 0
           } else{
-            dummy_value = ""
+            dummy_value = "STRING"
           }
           field_list_default_value = dummy_value
-          field_list[["values"]] = list(field_list_default_value)
+          field_list[["value"]] = field_list_default_value
         }
         if(!default_override){
           field_list_default_value = dummy_value
-          field_list[["values"]] = list(field_list_default_value)
+          field_list[["value"]] = field_list_default_value
         }
       } else{
         dummy_value = ""
         if(parameter_metadata[["type"]] == "boolean"){
-          dummy_value = "false"
-        } else if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
+          dummy_value = as.logical("false")
+        } else if(grepl("number",parameter_metadata[["type"]],ignore.case = T) | grepl("integer",parameter_metadata[["type"]],ignore.case = T)){
           dummy_value = 0
         } else{
-          dummy_value = ""
+          dummy_value = "STRING"
         }
         if(!default_override){
           field_list_default_value = dummy_value
-          field_list[["values"]] = list(field_list_default_value)
+          if(field_list_default_value != ""){
+            if(is.na(as.logical(field_list_default_value))){
+              field_list[["value"]] = field_list_default_value
+            } else if(!is.na(strtoi(field_list_default_value))){
+              field_list[["value"]] = strtoi(field_list_default_value)
+            } else{
+              field_list[["value"]] = as.logical(field_list_default_value)
+            }
+          } else{
+            field_list[["value"]] = "STRING"
+          }
         }
       }
     if(length(field_list_default_value) > 1){

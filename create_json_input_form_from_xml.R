@@ -133,15 +133,15 @@ param_list_for_template <- function(list_of_params,restrict_to_required_params){
 convert_json_import_form_types <- function(info_type){
   type_returned = info_type
   if(info_type == "booleanType"){
-    type_returned = "CHECKBOX"
+    type_returned = "checkbox"
   } else if(info_type == "stringType"){
-    type_returned = "TEXTBOX"
+    type_returned = "textbox"
   } else if(info_type == "doubleType"){
-    type_returned = "NUMBER"
+    type_returned = "number"
   } else if(info_type == "integerType"){
-    type_returned = "INTEGER"
+    type_returned = "integer"
   } else if(info_type == "optionsType"){
-    type_returned = "SELECT"
+    type_returned = "select"
   } 
   return(type_returned)
 }
@@ -162,13 +162,13 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
   if(!empty_data_inputs){
     section_list = list()
     section_list[["id"]] = "section_datainputs"
-    section_list[["type"]] = "SECTION"
+    section_list[["type"]] = "section"
     section_list[["label"]] = "Section for selecting data inputs"
     data_input_list_collection[[1]] = section_list
     for(i in 1:length(names(data_input_list))){
       input_name = names(data_input_list)[i]
       input_list = list()
-      input_list[["type"]] = "DATA"
+      input_list[["type"]] = "data"
       input_list[["id"]] = input_name
       input_list_required = data_input_list[[input_name]][["required"]]
       input_list[["helpText"]] =  data_input_list[[input_name]][["description"]]
@@ -193,12 +193,14 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
       }
       if(data_input_list[[input_name]][["type"]] == "DIRECTORY"){
         input_list[["dataFilter"]] = list()
-        input_list[["dataFilter"]][["dataType"]] = list()
-        input_list[["dataFilter"]][["dataType"]][["enum"]] = list("directory")
+        ###input_list[["dataFilter"]][["dataType"]] = list()
+        input_list[["dataFilter"]][["dataType"]]  = "directory"
+        ##input_list[["dataFilter"]][["dataType"]][["enum"]] = list("directory")
       } else if(data_input_list[[input_name]][["type"]] == "FILE"){
         input_list[["dataFilter"]] = list()
-        input_list[["dataFilter"]][["dataType"]] = list()
-        input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
+        ###input_list[["dataFilter"]][["dataType"]] = list()
+        input_list[["dataFilter"]][["dataType"]] = "file"
+        ###input_list[["dataFilter"]][["dataType"]][["enum"]] = list("file")
       }
       data_input_list_collection[[i+1]] = input_list
     }
@@ -207,7 +209,7 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
   if(!empty_parameter_list){
     section_list = list()
     section_list[["id"]] = "section_parameters"
-    section_list[["type"]] = "SECTION"
+    section_list[["type"]] = "section"
     section_list[["label"]] = "Section for selecting parameters"
     parameter_list_collection[[1]] = section_list
     for(i in 1:length(names(parameter_list))){
@@ -219,23 +221,39 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
       field_list[["helpText"]] = parameter_list[[parameter_name]][["description"]]
       field_list[["label"]] = parameter_list[[parameter_name]][["label"]]
       field_list_multi_value = parameter_list[[parameter_name]][["multiValue"]]
+      if(!is.null(field_list_multi_value)){
+        if(!field_list_multi_value){
+          field_list_multi_value = NULL
+        }
+      }
       field_list_default_value = parameter_list[[parameter_name]][["value"]]
       ### make sure we collect choises for options that can be selected
-      if(field_list[["type"]] == "SELECT"){
-        field_list[["choices"]] = parameter_list[[parameter_name]][["options"]]
+      if(field_list[["type"]] == "select"){
+        choices_list = list()
+        options_to_pick = parameter_list[[parameter_name]][["options"]]
+        for(o_idx in 1:length(options_to_pick)){
+          option_list = list()
+          option_list[["text"]] = options_to_pick[o_idx]
+          option_list[["value"]] = options_to_pick[o_idx]
+          if(o_idx == 1){
+            option_list[["selected"]] = as.logical("true")
+          }
+          choices_list[[o_idx]] = option_list
+        }
+        field_list[["choices"]] = choices_list
       }
       ### convert strings to numeric values
-      if(field_list[["type"]] == "NUMBER" | field_list[["type"]] == "INTEGER"){
+      if(field_list[["type"]] == "number" | field_list[["type"]] == "integer"){
         field_list_default_value = as.numeric(field_list_default_value)
       }
       #### convert string to boolean values
-      if(field_list[["type"]] == "CHECKBOX"){
+      if(field_list[["type"]] == "checkbox"){
         if(grepl("true",field_list_default_value,ignore.case = T)){
           field_list_default_value = TRUE
         } else{
           field_list_default_value = FALSE
         }
-        field_list_default_value = tolower(field_list_default_value)
+        field_list_default_value = as.logical(tolower(field_list_default_value))
       }
       
       
@@ -257,13 +275,31 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
         field_list[["maxValues"]] = 1
       }
       if(!is.null(field_list_default_value)){
-        if(field_list_default_value != "STRING"){
-          field_list[["values"]] = list(field_list_default_value)
+        if(field_list_default_value != "STRING" & field_list_default_value != ""){
+          if(!is.null(field_list_multi_value)){
+            field_list[["value"]] = list(field_list_default_value)
+          } else{
+            if(is.na(as.logical(field_list_default_value))){
+              field_list[["value"]] = field_list_default_value
+            } else if(!is.na(strtoi(field_list_default_value))){
+              field_list[["value"]] = strtoi(field_list_default_value)
+            } else{
+              field_list[["value"]] = as.logical(field_list_default_value)
+            }
+          }
         } else{
-          field_list[["values"]] = list()
+          if(!is.null(field_list_multi_value)){
+          field_list[["value"]] = list()
+          } else{
+            field_list[["value"]] = "STRING"
+          }
         }
       } else{
-        field_list[["values"]] = c()
+        if(!is.null(field_list_multi_value)){
+          field_list[["value"]] = c()
+        } else{
+          field_list[["value"]] = "STRING"
+        }
       }
       parameter_list_collection[[i+1]] = field_list
     }  
@@ -411,6 +447,7 @@ if(is.null(template_json)){
   #### create output json
   create_json_input_form(final_input,final_params,output_json)
   output_json = gsub(".xml$",".ica_cli_template.json",parameter_xml_file)
+  output_json = gsub("\\.pipeline","",output_json)
   rlog::log_info(paste("Saving ICA JSON input form to: ",output_json))
   JSON_TEMPLATE_CREATED = create_json_template(final_input,final_params,output_json)
   if(JSON_TEMPLATE_CREATED){

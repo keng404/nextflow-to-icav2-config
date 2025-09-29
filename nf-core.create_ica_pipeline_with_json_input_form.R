@@ -12,7 +12,7 @@ parser <- ArgumentParser()
 # specify our desired options 
 # by default ArgumentParser will add an help option 
 parser$add_argument("-j", "--json-input-form","--json_input_form", default=NULL,
-                    help="JSON input form for a pipeline")
+                    required=TRUE, help="JSON input form for a pipeline")
 parser$add_argument("-s", "--nextflow-script","--nextflow_script", default=NULL,
                     help="Main nf script for a pipeline")
 parser$add_argument("-y", "--nextflow-config","--nextflow_config", default=NULL,
@@ -23,10 +23,10 @@ parser$add_argument("-z","--storage-size","--storage_size", default="Small",
                     help = "default storage size to run analyses with this pipeline. [Small => 1.2 TB, Medium => 2.4 TB, and Large => 7.2 TB,XLarge, 2XLarge, 3XLarge] are storage sizes")
 parser$add_argument("-w","--workflow-language","--workflow_language", default="nextflow",
                     required=TRUE, help = "workflow language of pipeline. Currently supported workflow languages are cwl and nextflow")
-parser$add_argument("-x","--parameters-xml","--parameters_xml", default=NULL,
-                    required=TRUE, help = "parameters XML file")
-parser$add_argument("-o","--parameters-xml-override","--parameters_xml_override", default=FALSE,action="store_true",
-                    required=FALSE, help = "parameters XML file")
+#parser$add_argument("-x","--parameters-xml","--parameters_xml", default=NULL,
+#                    required=TRUE, help = "parameters XML file")
+##parser$add_argument("-o","--parameters-xml-override","--parameters_xml_override", default=FALSE,action="store_true",
+##                    required=FALSE, help = "parameters XML file")
 parser$add_argument("-v","--pipeline-name","--pipeline_name",required = TRUE,
                     default=NULL, help = "pipeline name")
 parser$add_argument("-g","--code-project-directory","--code-project_directory",
@@ -62,7 +62,7 @@ nextflow_config = args$nextflow_config
 json_input_form = args$json_input_form
 ## main script
 ## xml
-xml_file = args$parameters_xml
+##xml_file = args$parameters_xml
 
 storage_size = args$storage_size
 if(!storage_size %in% allowed_storage_sizes){
@@ -148,7 +148,7 @@ additional_files = args$project_directory
 files_to_add = list()
 if(!is.null(additional_files)){
   file_list  = list.files(additional_files,full.names = T,recursive=T)
-  file_list = file_list[file_list != main_script && file_list != xml_file]
+  file_list = file_list[file_list != main_script && file_list != json_input_form]
   if(length(file_list) > 0) {
     file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl(".tmp$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
   }
@@ -163,7 +163,7 @@ if(!is.null(additional_files)){
   if(!args$developer_mode){
     rlog::log_info(paste("By default, LOOKING for additonal files to add here:",dirname(main_script)))
     file_list  = list.files(dirname(main_script),full.names = T,recursive=T)
-    file_list = file_list[file_list != main_script & file_list != xml_file]
+    file_list = file_list[file_list != main_script & file_list != json_input_form]
     if(length(file_list) > 0) {
       file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl(".tmp$",x)) & !apply(t(file_list),2,function(x) grepl(".md$",x)) & !apply(t(file_list),2,function(x) grepl(".png$",x))]
     }
@@ -295,33 +295,36 @@ find_relevant_pipeline_names <- function(query,api_key){
   }
 }
 rename_pipeline_name <- function(pipeline_name,api_key){
+  new_name = pipeline_name
   new_pipeline_name = find_relevant_pipeline_names(pipeline_name,api_key)
-  rlog::log_info(paste("RELEVANT_PIPELINE_NAMES:",new_pipeline_name))
-  created_good_name = FALSE
-  while(! created_good_name){
-    new_pipeline_name = find_relevant_pipeline_names(pipeline_name,api_key)
     if(!is.null(new_pipeline_name)){
-      rlog::log_info(paste("RENAMING_PIPELINE_NAME:",pipeline_name,"TO",new_pipeline_name))
-      pipeline_name = new_pipeline_name[length(new_pipeline_name)]
-    } else if(is.null(new_pipeline_name) & !is.null(pipeline_name)){
-      created_good_name = TRUE
-      return(pipeline_name)
-    }
-    pipeline_name_split = strsplit(pipeline_name,"_")[[1]]
-    if(grepl("^v",pipeline_name_split[length(pipeline_name_split)])){
-      version_number = gsub("v","",pipeline_name_split[length(pipeline_name_split)])
-      if(!is.na(strtoi(version_number)) ) {
-        version_number = strtoi(version_number) + 1
-        pipeline_name_split[length(pipeline_name_split)] = paste("v",version_number,sep="")
-      } else{
+    rlog::log_info(paste("RELEVANT_PIPELINE_NAMES:",new_pipeline_name))
+    created_good_name = FALSE
+    while(! created_good_name){
+        new_pipeline_name = find_relevant_pipeline_names(pipeline_name,api_key)
+        if(!is.null(new_pipeline_name)){
+        rlog::log_info(paste("RENAMING_PIPELINE_NAME:",pipeline_name,"TO",new_pipeline_name))
+        pipeline_name = new_pipeline_name[length(new_pipeline_name)]
+        } else if(is.null(new_pipeline_name) & !is.null(pipeline_name)){
+        created_good_name = TRUE
+        return(pipeline_name)
+        }
+        pipeline_name_split = strsplit(pipeline_name,"_")[[1]]
+        if(grepl("^v",pipeline_name_split[length(pipeline_name_split)])){
+        version_number = gsub("v","",pipeline_name_split[length(pipeline_name_split)])
+        if(!is.na(strtoi(version_number)) ) {
+            version_number = strtoi(version_number) + 1
+            pipeline_name_split[length(pipeline_name_split)] = paste("v",version_number,sep="")
+        } else{
+            pipeline_name_split = c(pipeline_name_split,"v1")
+        }
+        } else{
         pipeline_name_split = c(pipeline_name_split,"v1")
-      }
-    } else{
-      pipeline_name_split = c(pipeline_name_split,"v1")
+        }
+        new_name = paste(pipeline_name_split,sep="_",collapse="_")
+        rlog::log_info(paste("TRYING_PIPELINE_NAME:",pipeline_name,"TO",new_name))
+        pipeline_name = new_name
     }
-    new_name = paste(pipeline_name_split,sep="_",collapse="_")
-    rlog::log_info(paste("TRYING_PIPELINE_NAME:",pipeline_name,"TO",new_name))
-    pipeline_name = new_name
   }
   return(new_name)
 }
@@ -338,7 +341,7 @@ if(!is.null(nextflow_config)){
   pipeline_creation_request[["nextflowConfigFile"]] = nextflow_config
 }
 base_ica_command = "icav2 projectpipelines create -s ica.illumina.com"
-full_ica_command = paste(base_ica_command,"-k",paste("'",api_key,"'",sep=""),workflow_language,pipeline_name,"--project-id",ica_project_id,"--main",main_script,"--parameter",xml_file,"--storage-size",storage_size)
+full_ica_command = paste(base_ica_command,"-k",paste("'",api_key,"'",sep=""),workflow_language,pipeline_name,"--project-id",ica_project_id,"--main",main_script,"--input-form",json_input_form,"--storage-size",storage_size)
 
 if(!is.null(comments)){
   full_ica_command = paste(full_ica_command,"--comment",paste("\"",comments,"\""))
@@ -400,62 +403,62 @@ if(workflow_language == "nextflow"){
 ## if simple_mode == TRUE , then modify XML file and upload the rest of the files to the project
 if(args$developer_mode){
   file_list  = list.files(dirname(main_script),full.names = T,recursive=T)
-  file_list = file_list[file_list != main_script & file_list != xml_file]
+  file_list = file_list[file_list != main_script & file_list != json_input_form]
   if(length(file_list) > 0) {
     file_list = file_list[!apply(t(file_list),2,function(x) x == file.path(dirname(main_script),"main.nf")) &  !apply(t(file_list),2,function(x) grepl(".tmp$",x)) & !apply(t(file_list),2,function(x) grepl("nextflow.config$",x)) & !apply(t(file_list),2,function(x) grepl(".pipeline.xml$",x))]
   }
-  library(XML)
-  library(rlog)
-  dummy_xml = xml_file
-  if(args$parameters_xml_override){
-    parameter_xml_file = dummy_xml
-    data_inputs_to_add = c("input_files","project_dir")
+  ###library(XML)
+  ###library(rlog)
+  ###dummy_xml = xml_file
+  ###if(args$parameters_xml_override){
+  ###  parameter_xml_file = dummy_xml
+  ###  data_inputs_to_add = c("input_files","project_dir")
     
-    rlog::log_info(paste("UPDATING parameters XML file:",parameter_xml_file))
-    doc = xmlTreeParse(parameter_xml_file,useInternalNodes = TRUE)
-    root = xmlRoot(doc)
-    dataInputsNode = root[["dataInputs"]]
-    data_input_names = xmlAttrs(root[["dataInputs"]][["dataInput"]])[["code"]]
+  ###  rlog::log_info(paste("UPDATING parameters XML file:",parameter_xml_file))
+  ###  doc = xmlTreeParse(parameter_xml_file,useInternalNodes = TRUE)
+  ###  root = xmlRoot(doc)
+  ###  dataInputsNode = root[["dataInputs"]]
+  ###  data_input_names = xmlAttrs(root[["dataInputs"]][["dataInput"]])[["code"]]
     #tool_names = xmlAttrs(root[["steps"]][["step"]][["tool"]])[["code"]]
-    if(!"project_dir" %in% data_input_names){
-      new_input_node_attributes = c(code = "project_dir",format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")  
-      node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
-      newXMLNode("label", "project_dir", parent=node_object)
-      newXMLNode("description", "directory with additional files/input to run pipeline --- other files in your github project", parent=node_object)
-    }
-    if(!"input_files" %in% data_input_names){
-      new_input_node_attributes = c(code = "input_files",format = "UNKNOWN",type = "FILE",required = "true",multiValue = "true")  
-      node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
-      newXMLNode("label", "input_files", parent=node_object)
-      newXMLNode("description", "additional files/input to run pipeline --- other files in your github project", parent=node_object)
-    }
+  ###  if(!"project_dir" %in% data_input_names){
+  ###    new_input_node_attributes = c(code = "project_dir",format = "UNKNOWN",type = "DIRECTORY",required = "true",multiValue = "true")  
+  ###    node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
+  ###    newXMLNode("label", "project_dir", parent=node_object)
+  ###    newXMLNode("description", "directory with additional files/input to run pipeline --- other files in your github project", parent=node_object)
+  ###  }
+  ###  if(!"input_files" %in% data_input_names){
+  ###    new_input_node_attributes = c(code = "input_files",format = "UNKNOWN",type = "FILE",required = "true",multiValue = "true")  
+  ###    node_object = newXMLNode("dataInput",attrs=new_input_node_attributes,parent = dataInputsNode)
+  ###    newXMLNode("label", "input_files", parent=node_object)
+  ###    newXMLNode("description", "additional files/input to run pipeline --- other files in your github project", parent=node_object)
+  ### }
     
-    outputPath = gsub(".xml$",".updated.xml",parameter_xml_file)
-    rlog::log_info(paste("Updating parameters XML here:",outputPath))
-    #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-    prefix.xml <- "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
-    saveXML(doc , file=outputPath,encoding="utf-8")
-    #xml_file = outputPath
-    system(paste("mv",outputPath,parameter_xml_file))
-    rlog::log_info(paste("Updating parameters XML to:",parameter_xml_file))
-    xml_file = parameter_xml_file
-  }
+  ###  outputPath = gsub(".xml$",".updated.xml",parameter_xml_file)
+  ###  rlog::log_info(paste("Updating parameters XML here:",outputPath))
+  ###  #prefix='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+  ###  prefix.xml <- "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+  ###  saveXML(doc , file=outputPath,encoding="utf-8")
+  ###  #xml_file = outputPath
+  ###  system(paste("mv",outputPath,parameter_xml_file))
+  ###  rlog::log_info(paste("Updating parameters XML to:",parameter_xml_file))
+  ###  xml_file = parameter_xml_file
+  ### }
   ## add smoke test to ICA XML file
-  smoke_test_in_config_bool = smoke_test_in_config(nextflow_config)
-  if(smoke_test_in_config_bool & !is.null(xml_file) & args$parameters_xml_override ){
-    xml_list = XML::xmlToList(xml_file)
-    tool_names = xml_list[["steps"]]
-    if(!ica_smoke_test_in_parameters_list(tool_names)){
-      ###### Grab all parameters from XML under each tool and output to list ----
-      add_ica_smoke_test_to_parameters_list(xml_file = xml_file)
-    } else{
-      rlog::log_info(paste("Already found ica_smoke_test in the xml:",xml_file))
-    }
-  } else{
-    rlog::log_info(paste("No smoke test reference found in:",smoke_test_in_config_bool))
-  }
+  #smoke_test_in_config_bool = smoke_test_in_config(nextflow_config)
+  #if(smoke_test_in_config_bool & !is.null(xml_file) & args$parameters_xml_override ){
+  #  xml_list = XML::xmlToList(xml_file)
+  ##  tool_names = xml_list[["steps"]]
+  #  if(!ica_smoke_test_in_parameters_list(tool_names)){
+  #    ###### Grab all parameters from XML under each tool and output to list ----
+  #    add_ica_smoke_test_to_parameters_list(xml_file = xml_file)
+  #  } else{
+  #    rlog::log_info(paste("Already found ica_smoke_test in the xml:",xml_file))
+  #  }
+  #} else{
+  #  rlog::log_info(paste("No smoke test reference found in:",smoke_test_in_config_bool))
+  #}
   ################################
-  pipeline_creation_request[["parametersXmlFile"]] = xml_file
+#  pipeline_creation_request[["parametersXmlFile"]] = xml_file
   #####################################################
   files_to_stage = file_list
   for(fts in 1:length(files_to_stage)){
@@ -649,13 +652,13 @@ num_retries = 0
 max_retries = 4
 if(!args$debug){
   pipeline_creation_response = rjson::fromJSON(json_str=system(curl_command,intern=T))
-  pipeline_creation_response_json = paste(dirname(xml_file),"pipeline_creation.response.json",collapse="/",sep="/")
+  pipeline_creation_response_json = paste(dirname(json_input_form),"pipeline_creation.response.json",collapse="/",sep="/")
   error_json = jsonlite::toJSON(pipeline_creation_response,pretty=TRUE)
   rlog::log_info(paste("Writing response to ",pipeline_creation_response_json))
   write(error_json,file=pipeline_creation_response_json)
   #pipeline_creation_response = httr::POST(pipeline_creation_url,config=httr::add_headers("X-API-Key"=api_key), httr::accept("application/vnd.illumina.v3+json"),httr::content_type("multipart/form-data"),body = pipeline_creation_request,encode="multipart", verbose())
   #pipeline_creation_response_list = str(content(pipeline_creation_response, "parsed"))
-  if(!"pipeline" %in% names(pipeline_creation_response)){
+  if(!"urn" %in% names(pipeline_creation_response)){
     rlog::log_warn(paste("Could not create pipeline for:",main_script))
     rlog::log_warn(paste("Retrying pipeline creation for:",main_script))
     new_pipeline_name = pipeline_creation_request[["code"]]
@@ -674,17 +677,17 @@ if(!args$debug){
         rlog::log_error(paste("ERROR code from creating pipeline. Attempt #",num_retries,main_script))
         #print(pipeline_creation_response)
         error_json = jsonlite::toJSON(pipeline_creation_response,pretty=TRUE)
-        pipeline_creation_response_json = paste(dirname(xml_file),"pipeline_creation.response_error.json",collapse="/",sep="/")
+        pipeline_creation_response_json = paste(dirname(json_input_form),"pipeline_creation.response_error.json",collapse="/",sep="/")
         rlog::log_error(paste("OUTPUT error to:",pipeline_creation_response_json))
         write(error_json,file=pipeline_creation_response_json)        
       } else{
-        rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$pipeline$id))
+        rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$id))
         num_retries = max_retries
       }
     }
     #print(pipeline_creation_response_list)
 
   } else{
-    rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$pipeline$id))
+    rlog::log_info(paste("Pipeline successfully created for project",ica_project_id,"\nPipeline Id is:",pipeline_creation_response$id))
   }
 }
