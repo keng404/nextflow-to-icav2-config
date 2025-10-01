@@ -341,13 +341,15 @@ if(length(data_input_configurations) >0){
 rlog::log_info(paste("STEP3b: Adding parameter options"))
 parameter_list_collection = list()
 if(length(step_configurations)>0){
+  total_fields_idx = 0
   for(i in 1:length(names(step_configurations))){
+    total_fields_idx = total_fields_idx + 1
     section_list = list()
     section_list[["id"]] = paste(names(step_configurations)[i],"section parameters")
     section_list[["type"]] = "section"
     section_list[["label"]] = paste(names(step_configurations)[i],"parameters")
     section_list[["helpText"]] = paste(names(step_configurations)[i],"parameters")
-    parameter_list_collection[[i]] = section_list
+    parameter_list_collection[[total_fields_idx]] = section_list
     parameter_names = names(step_configurations[[names(step_configurations)[i]]])
     for(j in 1:length(parameter_names)){
       parameter_metadata = step_configurations[[names(step_configurations[i])]][[parameter_names[j]]]
@@ -410,7 +412,9 @@ if(length(step_configurations)>0){
         }
       } else{
         if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
-          if(is.na(as.numeric(parameter_metadata[["default"]]))){
+          if(is.null(parameter_metadata[["default"]])){
+            field_list[["type"]] = "number"
+          } else if(is.na(as.numeric(parameter_metadata[["default"]]))){
           ###newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
             field_list[["type"]] = "integer"
           } else{
@@ -474,7 +478,8 @@ if(length(step_configurations)>0){
     if(length(field_list_default_value) > 1){
       field_list[["maxValues"]] = 999
     }
-    parameter_list_collection[[j + i]] = field_list
+      total_fields_idx = total_fields_idx + 1
+    parameter_list_collection[[total_fields_idx]] = field_list
     }
   }
 } else{

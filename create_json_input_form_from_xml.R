@@ -146,11 +146,11 @@ convert_json_import_form_types <- function(info_type){
   return(type_returned)
 }
 
-create_json_input_form <- function(data_input_list,parameter_list,file_output){
+create_json_input_form <- function(data_input_list,full_parameter_list,file_output){
   input_form = list()
   empty_data_inputs = FALSE
   empty_parameter_list = FALSE
-  if(length(names(parameter_list)) < 1){
+  if(length(names(full_parameter_list)) < 1){
     rlog::log_warn(paste("Could not find any parameters for template"))
     empty_parameter_list = TRUE
   }
@@ -207,11 +207,16 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
   }
   parameter_list_collection = list()
   if(!empty_parameter_list){
+    total_fields_idx = 0
+    for(k in 1:length(names(full_parameter_list))){
+      total_fields_idx = total_fields_idx + 1
+      section_name = names(full_parameter_list)[k]
     section_list = list()
-    section_list[["id"]] = "section_parameters"
+    section_list[["id"]] = paste(section_name,"section parameters")
     section_list[["type"]] = "section"
-    section_list[["label"]] = "Section for selecting parameters"
-    parameter_list_collection[[1]] = section_list
+    section_list[["label"]] = section_name
+    parameter_list = full_parameter_list[[section_name]]
+    parameter_list_collection[[total_fields_idx]] = section_list
     for(i in 1:length(names(parameter_list))){
       field_list = list()
       parameter_name = names(parameter_list)[i]
@@ -274,7 +279,7 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
       } else{
         field_list[["maxValues"]] = 1
       }
-      if(!is.null(field_list_default_value)){
+      if(!is.null(field_list_default_value) & !is.na(field_list_default_value)){
         if(field_list_default_value != "STRING" & field_list_default_value != ""){
           if(!is.null(field_list_multi_value)){
             field_list[["value"]] = list(field_list_default_value)
@@ -301,8 +306,10 @@ create_json_input_form <- function(data_input_list,parameter_list,file_output){
           field_list[["value"]] = "STRING"
         }
       }
-      parameter_list_collection[[i+1]] = field_list
+      total_fields_idx = total_fields_idx + 1
+      parameter_list_collection[[total_fields_idx]] = field_list
     }  
+    }
   }
   if(length(parameter_list_collection) > 0 & length(data_input_list_collection) > 0){
     full_collection = c(data_input_list_collection,parameter_list_collection)
@@ -362,44 +369,46 @@ cli_preview <- function(json_template,workflow_language){
   for(i in 1:length(names(json_template_data))){
     cli_prefix = names(json_template_data)[i]
     keys_to_add = names(json_template_data[[cli_prefix]])
-    for(j in 1:length(keys_to_add)){
-      key_name = keys_to_add[j]
-      key_value = ""
-      if("value" %in% names(json_template_data[[cli_prefix]][[key_name]])){
-        key_value = json_template_data[[cli_prefix]][[key_name]][["value"]]
-      }
-      if(length(key_value) > 1 ){
-        key_value = paste(key_value,sep=",",collapse=",")
-      }
-      rlog::log_info(paste("KEY_VALUE:",key_value,"KEY_NAME:",key_name))
-      if(key_value == "STRINGS" & cli_prefix == "input"){
-        key_value = "DATA_ID1,DATA_ID2,...,DATA_IDxx"
-      } 
-      if(key_name == "outdir"){
-        key_value = "out"
-      }
-      #if(grepl("\\.|\\-",key_value) & !grepl("fil",key_value) & !grepl("fol",key_value) & !grepl("'",key_value)){
-      #  key_value = ke
-      ##}
-      if(grepl(" ",key_value)){
-        key_value = paste("'",key_value,"'",sep="")
-      }
-      
-      string_to_add = c()
-      if(!is.null(key_value) & key_value != ""){
-        string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
-      } else{
-        ##rlog::log_warn(paste("Not adding:",key_name,"to the CLI stub"))
-        if(grepl("data",cli_prefix)){
-          key_value = "DATA_ID1,DATA_ID2,...,DATA_IDxx"
-        } else{
-          key_value = "STRING"
+    if(length(keys_to_add) > 0){
+      for(j in 1:length(keys_to_add)){
+        key_name = keys_to_add[j]
+        key_value = ""
+        if("value" %in% names(json_template_data[[cli_prefix]][[key_name]])){
+          key_value = json_template_data[[cli_prefix]][[key_name]][["value"]]
         }
-        string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
-      }
-      #rlog::log_info(paste("ADDING:",string_to_add))
-      if(length(string_to_add) > 0){
-        cli_interstitial = c(cli_interstitial,paste(string_to_add,"\\\n"))
+        if(length(key_value) > 1 ){
+          key_value = paste(key_value,sep=",",collapse=",")
+        }
+        rlog::log_info(paste("KEY_VALUE:",key_value,"KEY_NAME:",key_name))
+        if(key_value == "STRINGS" & cli_prefix == "input"){
+          key_value = "DATA_ID1,DATA_ID2,...,DATA_IDxx"
+        } 
+        if(key_name == "outdir"){
+          key_value = "out"
+        }
+        #if(grepl("\\.|\\-",key_value) & !grepl("fil",key_value) & !grepl("fol",key_value) & !grepl("'",key_value)){
+        #  key_value = ke
+        ##}
+        if(grepl(" ",key_value)){
+          key_value = paste("'",key_value,"'",sep="")
+        }
+        
+        string_to_add = c()
+        if(!is.null(key_value) & key_value != ""){
+          string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
+        } else{
+          ##rlog::log_warn(paste("Not adding:",key_name,"to the CLI stub"))
+          if(grepl("data",cli_prefix)){
+            key_value = "DATA_ID1,DATA_ID2,...,DATA_IDxx"
+          } else{
+            key_value = "STRING"
+          }
+          string_to_add = paste(paste("--",cli_prefix,sep=""),paste(key_name,":",key_value,sep=""),collapse = " ",sep = " ")
+        }
+        #rlog::log_info(paste("ADDING:",string_to_add))
+        if(length(string_to_add) > 0){
+          cli_interstitial = c(cli_interstitial,paste(string_to_add,"\\\n"))
+        }
       }
     }
   }
@@ -430,6 +439,7 @@ if(is.null(template_json)){
   # don't create template JSON if template JSON is provided.
   if(is.null(output_json)){
     output_json = gsub(".xml$",".ica_input_form.json",parameter_xml_file)
+    output_json = gsub("\\.pipeline","",output_json)
     rlog::log_info(paste("Saving ICA JSON input form to: ",output_json))
   }
   #########################################
@@ -437,13 +447,26 @@ if(is.null(template_json)){
   doc = xmlToList(parameter_xml_file)
   ##### Grab all dataInputs from XML and output to list ---- 
   data_input_names = doc[["dataInputs"]]
-  final_data_input_list = data_inputs_to_list(data_input_names)
-  final_input = data_list_for_template(final_data_input_list,only_required)
+  if(length(data_input_names)>0){
+    final_data_input_list = data_inputs_to_list(data_input_names)
+    final_input = data_list_for_template(final_data_input_list,only_required)
+  } else{
+    final_input = list()
+  }
   ###### Grab all parameters from XML under each tool and output to list ----
   tool_names = doc[["steps"]]
-  final_tool_params_list = parameters_to_list(tool_names)
-  final_params = param_list_for_template(final_tool_params_list,only_required)
-  
+  if(length(tool_names) > 0 ){
+    for(i in 1:length(tool_names)){
+      tool_section_name = tool_names[[i]]$label
+      final_tool_params_list = parameters_to_list(tool_names[i])
+      #print(final_tool_params_list)
+      final_params_section = param_list_for_template(final_tool_params_list,only_required)
+      final_params[[tool_section_name]] = final_params_section
+    }  
+  } else{
+    final_params = list()
+  }
+  #print(final_params)
   #### create output json
   create_json_input_form(final_input,final_params,output_json)
   output_json = gsub(".xml$",".ica_cli_template.json",parameter_xml_file)

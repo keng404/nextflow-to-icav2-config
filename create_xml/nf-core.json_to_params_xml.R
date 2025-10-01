@@ -341,8 +341,10 @@ if(length(step_configurations)>0){
         }
       } else{
         if(grepl("number",parameter_metadata[["type"]],ignore.case = T)){
-          if(is.na(as.numeric(parameter_metadata[["default"]]))){
-          newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
+          if(is.null(parameter_metadata[["default"]])){
+            newXMLNode(paste("float","Type",sep=""),parent=nested_parameter_node)
+          } else if(is.na(as.numeric(parameter_metadata[["default"]]))){
+            newXMLNode(paste("integer","Type",sep=""),parent=nested_parameter_node)
           } else{
             newXMLNode(paste("float","Type",sep=""),parent=nested_parameter_node)
           }
