@@ -348,7 +348,10 @@ create_json_template <- function(data_input_list,parameter_list,file_output){
     empty_data_inputs = TRUE
   }
   template_list[["field-data"]] = data_input_list
-  template_list[["field"]] = parameter_list
+  template_list[["field"]] = list()
+  for(i in 1:length(names(parameter_list))){
+    template_list[["field"]] = append(template_list[["field"]],parameter_list[[names(parameter_list)[i]]])
+  }
   if(!empty_parameter_list | !empty_data_inputs){
     template_JSON = jsonlite::toJSON(template_list)
     rlog::log_info(paste("Writing template to",file_output))
@@ -455,6 +458,7 @@ if(is.null(template_json)){
   }
   ###### Grab all parameters from XML under each tool and output to list ----
   tool_names = doc[["steps"]]
+  final_params = list()
   if(length(tool_names) > 0 ){
     for(i in 1:length(tool_names)){
       tool_section_name = tool_names[[i]]$label
