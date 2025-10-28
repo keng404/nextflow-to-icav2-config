@@ -74,7 +74,7 @@ You can choose which pipelines to  ```git clone```, but as a convenience, the wr
 
 ## STEP 2: Obtain API key file
 
-Next, you'll need an API key file for ICA that can be generated using the instructions [here](https://help.ica.illumina.com/account-management/am-iam#api-keys).
+Next, you'll need an API key file for ICA that can be generated using the instructions [here](https://help.connected.illumina.com/account-management/platform-home#manage-existing-api-keys).
 
 ## STEP 3: Create a project in ICA
 
