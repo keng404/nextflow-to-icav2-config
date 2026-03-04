@@ -223,8 +223,8 @@ add_test_config <- function(dir_of_interest){
       rlog::log_info(paste("Choosing the following test config:",test_config))
       return(test_config)
     } else{
-      rlog::log_info(paste("Choosing the following test config:",configs[1]))
-      return(configs[1])
+      rlog::log_warn(paste("No test configs found for:",dir_of_interest))
+      return(test_config)
     }
   } else{
     rlog::log_warn(paste("No test configs found for:",dir_of_interest))
@@ -252,17 +252,17 @@ if(is_simple_config | is.null(base_config_files)){
   if(length(config_lines) < 1){
     config_lines = NULL
   }
-  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_to_strip(params_override_template))
-  config_params = inject_params(params_list = config_params_updated, params_to_inject=params_to_override(configs_to_hardcode))
+  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_override_template)
+  config_params = inject_params(params_list = config_params_updated, params_to_inject=configs_to_hardcode)
   # generate ICA nextflow config file
   write_params(params_list = config_params,additional_lines = config_lines,output_file=paste(dirname(config_file),ica_config,sep="/"))
   # copy ICA module template
-  copy_modules_template(template_file=base_config_template,destination_dir=dirname(config_file))
-  get_file_extension = strsplit(basename(base_config_template),"\\.")[[1]]
-  base_config_relative_path = gsub(paste(".",get_file_extension[length(get_file_extension)],"$",sep="",collapse=""),".ica.config",base_config_file_path)
+  # copy_modules_template(template_file=base_config_template,destination_dir=dirname(config_file))
+  ## get_file_extension = strsplit(basename(base_config_template),"\\.")[[1]]
+  #base_config_relative_path = gsub(paste(".",get_file_extension[length(get_file_extension)],"$",sep="",collapse=""),".ica.config",base_config_file_path)
   
   # add reference to your module config file
-  add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=base_config_relative_path)
+  #add_module_reference(nextflow_config=paste(dirname(config_file),ica_config,sep="/"),existing_module_file=NULL,additional_config=base_config_relative_path)
   test_config = add_test_config(dirname(config_file))
   if(!is.null(test_config)){
     test_config_file_path = getRelativePath(to=test_config,from=config_file)
@@ -291,8 +291,8 @@ if(is_simple_config | is.null(base_config_files)){
   if(length(second_pass_lines[["lines_to_migrate"]]) < 1){
     second_pass_lines[["lines_to_migrate"]] = NULL
   }
-  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_to_strip(params_override_template))
-  config_params = inject_params(params_list = config_params_updated, params_to_inject=params_to_inject(configs_to_hardcode))
+  config_params_updated = strip_params(params_list = config_params,params_to_strip=params_override_template)
+  config_params = inject_params(params_list = config_params_updated, params_to_inject=configs_to_hardcode)
   # generate ICA nextflow config file
   write_params(params_list = config_params,additional_lines = second_pass_lines[["lines_to_keep"]],output_file=paste(dirname(config_file),ica_config,sep="/"))
   # add reference to your module config file

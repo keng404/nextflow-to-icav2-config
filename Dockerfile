@@ -1,6 +1,6 @@
-FROM r-base:4.3.1
+FROM r-base:4.5.0
 RUN apt-get update -y && \
-    apt-get install -y curl libxml2-dev libssl-dev libcurl4-openssl-dev python-dev-is-python3 git
+    apt-get install -y curl libxml2-dev libssl-dev libcurl4-openssl-dev python3-dev git
 ### copy in scripts
 ENV SCRIPT_DIR /scripts
 WORKDIR ${SCRIPT_DIR}
@@ -60,4 +60,9 @@ WORKDIR /scripts
 ### ensure all executables and scripts can be run
 RUN chmod -R 777 ${SCRIPT_DIR}
 RUN apt-get update -y && apt-get -y install openssl
+RUN apt-get update && apt-get install -y \
+    python3-dev \
+    python3-pip
+
+####### RUN Rscript ${SCRIPT_DIR}/install_packages.R
 ####RUN adduser --disabled-password --gecos '' icauser

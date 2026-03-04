@@ -226,10 +226,12 @@ if(length(configs_to_ignore) > 0 && !is.null(z1)){
   z1 = z1[ !(z1 %in% configs_to_ignore)]
 }
 ### second pass configs to ignore
+if(!is.null(z1)){
 configs_to_ignore = z1[ apply(t(z1),2,function(x) sum(strsplit(x,'/')[[1]] == "") > 1) ]
 rlog::log_info(paste("CONFIGS_TO_IGNORE:",configs_to_ignore))
 if(length(configs_to_ignore) > 0 && !is.null(z1)){
   z1 = z1[ !(z1 %in% configs_to_ignore)]
+}
 }
 rlog::log_info(paste("CONFIGS_FOUND:",z1))
 final_config_list = c()
@@ -299,7 +301,8 @@ parse_nf_script <- function(nf_script){
   out_process_enclosure = TRUE
   for(i in 1:nrow(nf_lines)){
     if(!in_process_enclosure){
-      if(grepl("process",nf_lines[i,])){
+      if(grepl("process",nf_lines[i,]) & !grepl("*",nf_lines[i,]) & !grepl("/",nf_lines[i,])){
+        rlog::log_info(paste("Changing STATUS line",i))
         in_process_enclosure = TRUE
         out_process_enclosure = FALSE
       }
@@ -311,23 +314,28 @@ parse_nf_script <- function(nf_script){
         }
       }
     } else{
+      rlog::log_info(paste("SKIPPING line",i))
       if(grepl("\\}",nf_lines[i,]) && !grepl("\\$",nf_lines[i,]) && !grepl("\\!",nf_lines[i,])){
         in_process_enclosure = FALSE
         out_process_enclosure = TRUE
       }
     }
-  }
+  } 
   param_list = c()
   param_metadata = list()
   if(length(lines_of_interest) >0){
     param_list = c()
     param_metadata = list()
     for(j in 1:length(lines_of_interest)){
-      tokenize_line = strsplit(lines_of_interest[j],"\\s+")[[1]]
+      #tokenize_line = strsplit(lines_of_interest[j],"\\s+")[[1]]
+      tokenize_line = trimws(lines_of_interest[j])
+      # remove empty elements
+      tokenize_line = tokenize_line[tokenize_line!=""]
       tokenize_line = strsplit(tokenize_line[1],"\\=")[[1]]
       param_value = trimws(tokenize_line[length(tokenize_line)])
-      for(k in 1:1){
-        # for(k in 1:length(tokenize_line)){
+      param_value = strsplit(param_value,"\\s+")[[1]][1]
+      ##for(k in 1:1){
+      for(k in 1:length(tokenize_line)){
         sanitized_token = trimws(tokenize_line[k])
         if(grepl("^params\\.",sanitized_token)){
           split_check = strsplit(sanitized_token,"\\.")[[1]]
@@ -350,7 +358,11 @@ parse_nf_script <- function(nf_script){
           }
           double_sanitized_token = paste(param_names,collapse=".")
           param_list = c(param_list,double_sanitized_token)
-          param_metadata[[double_sanitized_token]] = param_value
+          if(double_sanitized_token != param_value){
+            if(!grepl("params\\.",param_value)){
+              param_metadata[[double_sanitized_token]] = param_value
+            }
+          }
         }
       }
     }
@@ -382,7 +394,24 @@ all_nf_edits = list()
 ### for each element in y determine if the parameter depends on an upstream parameter
 params_to_check = names(y)
 params_to_add_to_nf_script = params_to_check[!(params_to_check %in% foi_result[["params_found"]])]
-
+params_found_in_main_script = foi_result[["params_found"]]
+params_found_in_main_script_list = foi_result[["params_metadata"]]
+if(length(params_found_in_main_script) > 0){
+  params_only_found_in_main_script = params_found_in_main_script[!(params_found_in_main_script %in% params_to_check)]
+  #### add parameters found in the main script
+  if(length(params_only_found_in_main_script) > 0){
+    for(idx in 1:length(params_only_found_in_main_script)){
+      if(params_only_found_in_main_script[idx] %in% names(params_found_in_main_script_list)){
+        param_val = params_found_in_main_script_list[[params_only_found_in_main_script[idx]]] 
+      } else{
+        param_val = "null"
+      }
+      rlog::log_info(paste("adding ",params_only_found_in_main_script[idx],":",param_val))
+      y[[params_only_found_in_main_script[idx]]] = param_val
+    }
+    params_to_add_to_nf_script = c(params_to_add_to_nf_script,params_only_found_in_main_script)
+  }
+}
 rlog::log_info(paste("Parameters to check:",paste(params_to_check,sep=", ")))
 rlog::log_info(paste("Parameters to add:",paste(params_to_add_to_nf_script,sep=", ")))
 #### try to figure out relative order that we should see these params in the main.nf script
@@ -434,7 +463,7 @@ if(length(params_to_check)>0){
   rlog::log_info(paste("SETTING y to foi_result[['params_found']]"))
   ### if there are no  configuration parameters to add, set y to  foi_result[["params_found"]]).
   ### This defaults to all params found in main script
-  y =  foi_result[["params_metadata"]]
+  y =  foi_result[["params_found"]]
   print(y)
 }
 #####
@@ -556,9 +585,12 @@ if(length(parameter_edits) > 0 ){
       #}
     }
     expressions_to_add = c()
-    if(grepl("false",y[[names(parameter_edits)[i]]])){
-      y[[names(parameter_edits)[i]]] = gsub("\"","",y[[names(parameter_edits)[i]]])
+    if(!is.null(y[[names(parameter_edits)[i]]])){
+      if(grepl("false",y[[names(parameter_edits)[i]]])){
+        y[[names(parameter_edits)[i]]] = gsub("\"","",y[[names(parameter_edits)[i]]])
+      }
     }
+    rlog::log_info(paste("param_name:",names(parameter_edits)[i], "param_value:",y[[names(parameter_edits)[i]]]))
     logical_values = y[[names(parameter_edits)[i]]] != "null" && y[[names(parameter_edits)[i]]] != "true" && y[[names(parameter_edits)[i]]] != "false"
     other_conditions = grepl("/",y[[names(parameter_edits)[i]]])  
     must_have_condition = !grepl("'",y[[names(parameter_edits)[i]]])  
