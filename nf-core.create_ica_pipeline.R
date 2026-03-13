@@ -31,7 +31,7 @@ parser$add_argument("-v","--pipeline-name","--pipeline_name",required = TRUE,
 parser$add_argument("-g","--code-project-directory","--code-project_directory",
                     default=NULL, help = "directory with other files of interest")
 parser$add_argument("-f","--nextflow-version","--nextflow_version",
-                    default="24.10.2", help = "nextflow_version")
+                    default="25.10.2", help = "nextflow_version")
 parser$add_argument("-p","--ica-project-name","--ica_project_name",
                     default=NULL, help = "ICA project name")
 parser$add_argument("-i","--ica-project-id","--ica_project_id",
@@ -514,7 +514,7 @@ if(is.null(storage_id)){
 #-F 'description=adsfassadf'
 #############
 parsePipelineDescription <- function(pipeline_description,api_key){
-  known_versions = c('20.10.0','22.04.3','24.10.2')  
+  known_versions = c('20.10.0','22.04.3','24.10.2','25.10.2')  
   final_version_id = NULL
   final_version = NULL
   pipeline_language_version_url =paste("https://",args$base_ica_url,"/ica/rest/api/pipelineLanguages/nextflow/versions",sep="")
